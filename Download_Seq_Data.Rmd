@@ -1,0 +1,76 @@
+---
+title: "Multiple ways to download public sequencing data"
+author: "LL"
+date: "April 27, 2019"
+output: 
+  html_document: 
+    theme: simplex
+  pdf_document:
+    fig_caption: yes
+    keep_tex: yes
+---
+
+# Option 1: Direct download of fastq files
+
+## Download fastq files from ENA
+
+Copy the "FASTQ files (FTP)" link of the sequencing data on https://www.ebi.ac.uk/ena
+
+```{bash echo = TRUE, eval = FALSE}
+wget ftp://ftp.sra.ebi.ac.uk/vol1/fastq/SRR300/001/SRR3000761/SRR3000761.fastq.gz
+```
+
+## Download fastq files from NCBI (only with SRR accession number, no path required)
+
+Find out the SRR accession number of the sequencing data on https://www.ncbi.nlm.nih.gov/sra
+
+```{bash echo = TRUE, eval = FALSE}
+fastq-dump <SRR accession>
+
+# As "fastq-dump"" is time-consuming, it is better to add "nohup &" to the command line. Like this, even if the current shell is terminated, "fastq-dump" is still running in the background.
+nohup fastq-dump <SRR accession> &
+```
+
+# Option 2: Download SRA files first and then convert to fastq files
+
+## Download SRA files from NCBI website
+
+Find out the SRR accession number of the sequencing data on https://www.ncbi.nlm.nih.gov/sra
+
+```{bash echo = TRUE, eval = FALSE}
+wget ftp://ftp-trace.ncbi.nih.gov/sra/sra-instant/reads/ByRun/sra/SRR/SRR300/SRR3000759/SRR3000759.sra
+
+```
+
+## Download SRA files from ENA
+
+Find out the SRR accession number of the sequencing data on https://www.ebi.ac.uk/ena
+
+```{bash echo = TRUE, eval = FALSE}
+wget ftp://ftp.sra.ebi.ac.uk/vol1/srr/SRR300/000/SRR3000760
+
+```
+
+## Convert SRA file to fastq file
+
+### For a single SRA file
+
+```{bash echo = TRUE, eval = FALSE}
+nohup fastq-dump SRR3000759.sra &
+```
+
+### For multiple SRA files
+
+```{bash echo = TRUE, eval = FALSE}
+nohup for i in SRR*; do fastq-dump -A $i; done &
+```
+
+# Further readings
+
+To check out features of the command line, type:
+```{bash echo = TRUE, eval = FALSE}
+nohup --help
+```
+
+To check out the related NCBI documentation of the SRA Toolkit, see:
+[Downloading SRA data using command line utilities](https://www.ncbi.nlm.nih.gov/books/NBK158899/#SRA_download.downloading_sra_data_using), and [Using the SRA Toolkit to convert SRA files into other formats](https://www.ncbi.nlm.nih.gov/books/NBK158900/)
