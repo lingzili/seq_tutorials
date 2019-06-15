@@ -29,8 +29,12 @@ git status
 # Step 4: Commit changes
 git commit --message "modify the comments on mkdir for fastqc" # Git will launch the text editor if there is no message
 
+# Change the most recent commit message
+git commit --amend -m "New commit message"
+
 # Access change history
 git log
+git log --all --oneline --graph # Only show git messages
 
 # Access previous commits
 git diff HEAD~1 task_1_fastqc.sh
@@ -55,3 +59,24 @@ git push -u origin master
 
 # List the remote repository
 git remote -v
+
+# Create a local copy of a remote repository (download from GitHub)
+git clone ssh://git@github.com/[username]/[repository-name].git	
+
+# List branches (the asterisk denotes the current branch)
+git branch	
+
+# Create a new branch
+git branch [branch name]
+
+# Swtich to a branch
+git checkout [branch name]
+
+# Create a new branch and switch to it
+git checkout -b [branch name]
+
+# Merge a branch into a target branch
+git merge [source branch] [target branch]
+
+# Delete a branch
+git branch -d [branch name]
