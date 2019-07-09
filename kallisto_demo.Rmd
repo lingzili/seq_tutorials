@@ -40,4 +40,4 @@ kallisto index -i transcripts.idx transcripts.fasta.gz
 ## Bibliography
 kallisto, Pachter Lab <https://pachterlab.github.io/kallisto/>
 
-Nicolas L Bray, Harold Pimentel, Páll Melsted and Lior Pachter, [Near-optimal probabilistic RNA-seq quantification](https://www.nature.com/articles/nbt.3519), Nature Biotechnology 34, 525–527 (2016), doi:10.1038/nbt.3519
+Nicolas L Bray, Harold Pimentel, Páll Melsted and Lior Pachter, [Near-optimal probabilistic RNA-seq quantification](https://www.nature.com/articles/nbt.3519), Nature Biotechnology 34, 525–527 (2016)

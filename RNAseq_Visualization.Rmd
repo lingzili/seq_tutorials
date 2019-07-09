@@ -1,0 +1,49 @@
+---
+title: "RNA-seq Visualization"
+author: "JWK & Islet group coding club meet-up"
+date: "July 9, 2019"
+output: html_document
+---
+
+<style type="text/css">
+
+h1.title {
+  font-size: 36px;
+  color: Green;
+}
+
+h1 { /* Header 1 */
+  font-size: 20px;
+  color: DarkBlue;
+}
+
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Load packages
+
+To install Bioconductor packages, please see: 
+
+**Bioconductor - Install** <https://bioconductor.org/install/>
+
+```{r eval=FALSE}
+library("limma")
+library("DESeq2")
+library("edgeR")
+library("ggplot2")
+```
+
+## Unsupervised clustering of samples
+
+## Differential expression and pathway analysis
+
+Differential expression analysis can be done using several available tools, each with differing methodologies.
+
+## Bibliography
+
+Michael I Love, Wolfgang Huber and Simon Anders, [Moderated estimation of fold change and dispersion for RNA-seq data with DESeq2](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-014-0550-8), Genome Biology 2014 15:550
+
+
