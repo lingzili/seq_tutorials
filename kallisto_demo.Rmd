@@ -2,40 +2,83 @@
 title: "kallisto demo"
 author: "JWK & Islet group coding club meet-up"
 date: "July 17, 2019"
-output: html_document
+output:
+  slidy_presentation: default
 ---
-
-<style type="text/css">
-
-h1.title {
-  font-size: 36px;
-  color: Green;
-}
-
-h1 { /* Header 1 */
-  font-size: 20px;
-  color: DarkBlue;
-}
-
-</style>
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduction to pseudoalignment
+## Download mouse transcriptome reference
 
-
-
-## Demo on kallisto
-# Building an index
+Download FASTA and GTF files for cDNAs of mouse (GRCm38.p6) from Ensembl
+<http://www.ensembl.org/Mus_musculus/Info/Index>
 
 ```{bash echo = TRUE, eval = FALSE}
-kallisto index -i transcripts.idx transcripts.fasta.gz
+mkdir kallisto_demo
+cd kallisto_demo
+
+# Download mouse cDNA FASTA file
+wget ftp://ftp.ensembl.org/pub/release-97/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz
+gunzip Mus_musculus.GRCm38.cdna.all.fa.gz
+
+# Download mouse GTF file
+wget ftp://ftp.ensembl.org/pub/release-97/gtf/mus_musculus/Mus_musculus.GRCm38.97.gtf.gz
+
 ```
 
-# Quantification of transcript abundances
+## FASTA
 
+Starts with ‘>’ and gives basic information about sequence
+
+Example:
+
+\>4 ENSMUST00000070533 chr1- 3214482-3216968,3421702-3421901,3670552-3671498
+AAAGTTTGACCGGCACTTTTAATGCAACAAAAAGCACCATGACCAAGGACACCGAAAACA
+GAAAGCGGGAATGTTTACTTGCTGTGTGGAGGTATTTAAAACTCAGAAGCTTGTAAGAGC
+
+## GTF (General Feature Format)
+
+Contains 9 columns of gene/transcript related features: **seqname, source, feature (e.g. Gene, Exon), start, end, score, strand, frame, attribute (e.g. gene_id, gene_name)**
+
+Example: 
+
+1       ensembl_havana  gene    5588466 5606131 .       +       .       gene_id "ENSMUSG00000025905"; gene_version "9"; gene_name "Oprk1"; gene_source "ensembl_havana"; gene_biotype "protein_coding";
+
+## kallisto
+
+To check the version of kallisto, type in command line:
+```{bash echo = TRUE, eval = FALSE}
+kallisto version
+```
+
+## Build “transcriptome index”
+
+```{bash echo = TRUE, eval = FALSE}
+kallisto index -i GRCm38.cdna.all.idx Mus_musculus.GRCm38.cdna.all.fa.gz
+```
+
+## Quantification of transcript abundances
+
+Pair-end reads:
+```{bash echo = TRUE, eval = FALSE}
+kallisto quant -t 2 -i GRCm38.cdna.all.idx -o kallisto_demo -b 100 reads_1.fastq.gz reads_2.fastq.gz
+```
+
+Single-end reads:
+
+## Output of kallisto
+
+abundances.h5: HDF5 binary file containing run info, abundance esimates, bootstrap estimates, and transcript length information length
+
+abundances.tsv: Plaintext file of the abundance estimates
+
+run_info.json: Contains information about the run
+
+## What's next?
+
+**Sleuth**: A differential expression tool that accepts directly the outputs of kallisto (see: <https://pachterlab.github.io/sleuth/>)
 
 ## Bibliography
 kallisto, Pachter Lab <https://pachterlab.github.io/kallisto/>

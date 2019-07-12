@@ -1,0 +1,17 @@
+---
+title: "Transcript Quantification"
+author: "JWK & Islet group coding club meet-up"
+date: "7/11/2019"
+output: slidy_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Quantification metrics
+
+- Normalization for comparison within a **single** sample
+- Normalization for comparison among **multiple** samples/conditions
+
+You should **never** use RPKM, FPKM, or TPM to compare expression levels across samples, because they are **relative** measures. 

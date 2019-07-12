@@ -2,22 +2,11 @@
 title: "RSeQC demo"
 author: "JWK & Islet group coding club meet-up"
 date: "July 17, 2019"
-output: html_document
+output:
+  ioslides_presentation: default
+  powerpoint_presentation: default
 ---
 
-<style type="text/css">
-
-h1.title {
-  font-size: 36px;
-  color: Green;
-}
-
-h1 { /* Header 1 */
-  font-size: 20px;
-  color: DarkBlue;
-}
-
-</style>
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
@@ -25,14 +14,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Quality control checkpoints
 
-Monitoring of data quality should be applied to every step of RNA-seq: output of raw sequencing reads, alignment to reference genome and quantification. The tools involved are:
+QC should be applied to every step of RNA-seq: raw sequencing reads, alignment and quantification. 
+The tools involved are:
 
 - **FastQC** <https://www.bioinformatics.babraham.ac.uk/projects/fastqc/>
 - **MultiQC** <https://multiqc.info/>
 - **RSeQC** <http://rseqc.sourceforge.net/>
 
-## Demo on RSeQC modules
-# Evaluation of RNA integrity at transcript level
+## Evaluation of RNA integrity at transcript level
 
 ```{bash echo = TRUE, eval = FALSE}
 tin.py -i *.bam -r ref.bed -o OUTPUT_PREFIX
