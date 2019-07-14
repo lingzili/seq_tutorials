@@ -205,7 +205,7 @@ gunzip Homo_sapiens.GRCh38.dna.toplevel.fa.gz
 curl -O ftp://ftp.ensembl.org/pub/release-97/gtf/homo_sapiens/Homo_sapiens.GRCh38.97.gtf.gz
 gunzip Homo_sapiens.GRCh38.97.gtf.gz
 
-# Create STAR genome index
+# Create STAR genome index (Lasted for 6 hours!!)
 # All samples have sequences of a single length (100bp).
 STAR --runThreadN 16 \
 --limitGenomeGenerateRAM 152003700778 \
@@ -234,9 +234,18 @@ done
 ```
 
 ## Visulization by IGV
-First indext the BAM file
+First sort (some downstream applications need sort by name order) and then index the BAM file
 ```{bash eval=FALSE}
-samtools index
+# Sort by name order
+for j in *.bam
+do echo "Begin processing $j"
+baseFilename=`basename $j Aligned.sortedByCoord.out.bam`
+samtools sort -n -@ 32 -o ${baseFilename}.bam $j
+echo "${baseFilename}.bam is done"
+done
+
+# Only use parallel when nobody else uses the server!!
+parallel "samtools index {}" ::: *bam
 ```
 
 Download .bam and .bai file to local desktop. IGV requires the .bai file to be in the same location as the .bam file that is loaded into IGV, but there is no direct use for that file.
@@ -247,8 +256,17 @@ Quality metrics are accessed by RNASeQC and Picard.
 ### Alignment summary
 It is expected that more than 70% of the reads should uniquely map to the reference genome. Contamination, low quality sequencing data, or poor library contruction may result in <60% uniquely aligned reads.
 
+```{bash eval=FALSE}
+# Get stat from BAM file
+for i in *.bam
+do baseFilename=`basename $i Aligned.sortedByCoord.out.bam`
+samtools flagstat -@ 32 $i > ${baseFilename}.stat.txt
+done 
+```
+
 ### Insert size (Picard)
 ```{bash eval=FALSE}
+# Define variables first!!
 
 ```
 
