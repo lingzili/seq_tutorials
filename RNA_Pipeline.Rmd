@@ -214,7 +214,6 @@ STAR --runThreadN 16 \
 --genomeFastaFiles /data/home/lingzili/GRCh38_genome/Homo_sapiens.GRCh38.dna.toplevel.fa \
 --sjdbGTFfile /data/home/lingzili/GRCh38_genome/Homo_sapiens.GRCh38.97.gtf \
 --sjdbOverhang 99
-
 ```
 
 Then use STAR (v2.7.1a) to map reads to the hg38 genome. 
@@ -222,11 +221,11 @@ Then use STAR (v2.7.1a) to map reads to the hg38 genome.
 # Align single-end reads with STAR
 ls *.fq.gz |while read id
 do baseFilename=`basename $id _trimmed.fq.gz`
-STAR --genomeDir /data/Genomes/human/hg38/star/index_with_100bp_overhang/ \
---runThreadN 32 \
+STAR --genomeDir /data/home/lingzili/GRCh38_genome/STAR \
+--runThreadN 16 \
 --readFilesIn $id \
 --readFilesCommand zcat \
---outFileNamePrefix /data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/output/STAR_hg38/${baseFilename}_ \
+--outFileNamePrefix /data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/STAR/${baseFilename}_ \
 --outBAMsortingThreadN 16 \
 --outSAMtype BAM SortedByCoordinate \
 --outSAMunmapped Within
@@ -234,27 +233,71 @@ echo "${baseFilename} is aligned"
 done
 ```
 
+## Visulization by IGV
+First indext the BAM file
+```{bash eval=FALSE}
+samtools index
+```
+
+Download .bam and .bai file to local desktop. IGV requires the .bai file to be in the same location as the .bam file that is loaded into IGV, but there is no direct use for that file.
+
 ## Quality control of mapped reads
+Quality metrics are accessed by RNASeQC and Picard.
+
 ### Alignment summary
 It is expected that more than 70% of the reads should uniquely map to the reference genome. Contamination, low quality sequencing data, or poor library contruction may result in <60% uniquely aligned reads.
 
 ### Insert size (Picard)
+```{bash eval=FALSE}
+
+```
 
 ### rRNA percentage
-Ribosomal RNA (rRNA) often exceeding 90% of the total RNA. It is expected that prior library treatment of rRNA removal should result in less than 5% of the reads mapped to rRNA sequences.
+Ribosomal RNA (rRNA) often exceeding 90% of the total RNA. It is expected that prior library treatment of rRNA removal should result in less than 5% of the reads mapped to rRNA sequences. Excess rRNA (> 2%) will normally have to be filtered out so that differences in rRNA mapped reads across samples do not affect alignment rates and skew subsequent normalization of the data.
 
 
 ### Read distribution
-It is expected that distribition profiles should be similar across samples. Less than 20% intronic mapped reads are expected in mRNA-seq libraries, whereas more than 40% in total RNA-seq libraries.
+It is expected that distribition profiles should be similar across samples. Less than 20% intronic mapped reads are expected in mRNA-seq libraries, whereas more than 40% in total RNA-seq libraries. A high intronic mapping suggests possible genomic DNA contamination and/or pre-mRNA. Around 55% of reads are normally observed mapping to exons.
 
 
 ### Gene body coverage
 Uniform distributed reads across genebodies is a prerequisite for accurate quantification of gene expression. The line plots should look like this: "∩". mRNA-seq library preparation typically uses oligo-dT beads to capture mature transcripts and can be prone to 3' bias in genebody coverage if degraded RNA (RIN < 7) is used as input, which may potentially introduce quantification bias.
 
 
-
 ### Junction saturation
 
+## Generate a count matrix using featureCounts
+Only uniquely mapped reads are counted at the gene level. Total read count of a gene (meta-feature) is the sum of reads mapped to each of the exons (feature).
+
+```{bash eval=FALSE}
+# Count features in all BAM files together (single-end reads)
+GTF="/data/home/lingzili/GRCh38_genome/WholeGenomeFasta/Homo_sapiens.GRCh38.97.gtf"
+outputFile="/data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/featurecount/GSE76268_featureCounts.txt" # Required option for specifying path to, and name of the text output (count matrix)
+BAM="/data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/STAR/*.out.bam"
+terminalLog="/data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/featurecount/GSE76268_featureCounts.log" # 2> redirects all the information from the terminal/screen into a file
+
+featureCounts -T 32 --verbose -a $GTF -o $outputFile $BAM 2> $terminalLog
+
+# MultiQC count stats
+cd /data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/featurecount
+multiqc .
+```
+
+The output txt file contains columns: Geneid, Chr, Start, End, Strand, Length and names of BAM files. We need to extract Geneid and their counts in each BAM file, which are needed for downstream processing.
+
+```{bash eval=FALSE}
+# Inspect txt file
+head -n 3 GSE76268_featureCounts.txt
+
+# Extract Geneid and their counts in each BAM file (starting from column 7)
+cut -f1,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21 GSE76268_featureCounts.txt > GSE76268_rMatrix.txt
+```
+
+Then download the txt file and use R to modify the header line to remove the extensions followed by sample ID.
+
+```{r}
+
+```
 
 ## Differential gene expression using DESeq2
 We considered genes with an FDR<.1 as significantly differentially expressed.
