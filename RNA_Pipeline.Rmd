@@ -10,7 +10,7 @@ body{ /* Normal  */
       font-size: 16px;
   }
 td {  /* Table  */
-  font-size: 14px;
+  font-size: 12px;
 }
 h1.title {
   font-size: 28px;
@@ -21,6 +21,9 @@ h1 { /* Header 1 */
 }
 h2 { /* Header 2 */
     font-size: 20px;
+}
+h3 { /* Header 3 */
+    font-size: 18px;
 }
 code.r{ /* Code block */
     font-size: 12px;
@@ -34,23 +37,30 @@ pre { /* Code block - determines code spacing between lines */
 knitr::opts_chunk$set(message = FALSE, warning = FALSE)
 library(tidyverse)
 library(knitr)
+library(kableExtra)
 ```
 
 ## Download fastq files from NCBI with SRR accession number
 The RNA-seq data is from [*Ackermann AM et al.,*](https://www.ncbi.nlm.nih.gov/pubmed/26977395) "Integration of ATAC-seq and RNA-seq identifies human alpha cell and beta cell signature genes.", Mol Metab, 2016 Mar;5(3):233-244.
 
-First download summary information regarding seq data by searching GEO accession number **GSE76268** in NCBI SRA website.
+First download summary information regarding seq data by searching GEO accession number **GSE76268** in [NCBI SRA website](https://www.ncbi.nlm.nih.gov/sra).
 
 R:
 ```{r}
-# Download Summary and RunInfo csv files of seq data from NCBI SRA website
+# Download Summary and RunInfo csv files of seq data from NCBI SRA website manually
 
-# Read csv files in R
+# Read csv files in R and display with scroller
 sra_result <- read.csv("~/seq_tutorials/sra_result.csv")
-kable(sra_result[1:3, 1:6], caption = "sra_result.csv snapshot")
+
+kable(sra_result, caption = "sra_result.csv snapshot") %>%
+  kable_styling() %>%
+  scroll_box(width = "100%", height = "150px")
 
 SraRunInfo <- read.csv("~/seq_tutorials/SraRunInfo.csv")
-kable(SraRunInfo[1:3, 1:6], caption = "SraRunInfo.csv snapshot")
+
+kable(SraRunInfo, caption = "SraRunInfo.csv snapshot") %>%
+  kable_styling() %>%
+  scroll_box(width = "100%", height = "150px")
 
 # Make two column names of these two csv files the same
 names(sra_result)[names(sra_result) == "Sample.Accession"] <- "Sample"
@@ -64,12 +74,17 @@ GSE76268_runInfo <- GSE76268_merge[colSums(!is.na(GSE76268_merge)) > 0]
 
 # Subset with columns that provides info to concatenate fastq files
 cat_runInfo <- select(GSE76268_runInfo, c("Sample", "Run", "Experiment.Title"))
-kable(cat_runInfo[1:29, ], caption = "Information for concatenating RNA-seq fastq files")
+
+kable(cat_runInfo, caption = "Information for concatenating RNA-seq fastq files") %>%
+  kable_styling() %>%
+  scroll_box(width = "100%", height = "150px")
+
 ```
 ```{r eval=FALSE}
 # Save csv files
-write.csv(GSE76268_runInfo,'GSE76268_runInfo.csv')
-write.csv(cat_runInfo, 'cat_runInfo.csv')
+write.csv(GSE76268_runInfo, "GSE76268_runInfo.csv")
+write.csv(cat_runInfo, "cat_runInfo.csv")
+
 ```
 
 Then download SRA files to Linux server.
@@ -84,19 +99,183 @@ cd input
 # Attention: SRA file download takes a lot of time, therefore run it in the background by screen or nohup
 for (( i = 55; i <= 83; i++ ))
 do
-  echo "Start downloading SRR30480$i"
-  wget https://sra-download.ncbi.nlm.nih.gov/traces/sra37/SRR/002976/SRR30480$i
+echo "Start downloading SRR30480$i"
+wget https://sra-download.ncbi.nlm.nih.gov/traces/sra37/SRR/002976/SRR30480$i
 done
 
-# fastq-dump single-end seq data
-for i in SRR*; do fastq-dump --gzip -A $i; done
+# Check integrity of downloaded SRA file
+vdb-validate SRR3048055
 
-# Merge files that belongs to the same sample
-cat 
+# fasterq-dump single-end seq data (indicate local path)
+ls SRR* | while read id
+do
+echo "fasterq-dump on $id"
+fasterq-dump -e 16 -p ./$id
+done
+
+# Remove SRA files
+find . -type f  ! -name "*.*" -delete
+```
+
+Check the information in csv files and merge the fastq files that belongs to the same sample
+
+Shell:
+```{bash eval=FALSE}
+# Merge files 
+for file in SRR3048080* SRR3048081* SRR3048082*
+do
+echo "Merge $file"
+cat "$file" >> ../SRS1219077.fastq && rm "$file"
+done
+
+for file in SRR3048077* SRR3048078* SRR3048079*
+do
+echo "Merge $file"
+cat "$file" >> ../SRS1219078.fastq && rm "$file"
+done
+
+for file in SRR3048071* SRR3048072* SRR3048073*
+do
+echo "Merge $file"
+cat "$file" >> ../SRS1219082.fastq && rm "$file"
+done
+
+for file in SRR3048067* SRR3048068* SRR3048069*
+do
+echo "Merge $file"
+cat "$file" >> ../SRS1219084.fastq && rm "$file"
+done
+
+for file in SRR3048064* SRR3048065* SRR3048066*
+do
+echo "Merge $file"
+cat "$file" >> ../SRS1219085.fastq && rm "$file"
+done
+
+for file in SRR3048061* SRR3048062* SRR3048063*
+do
+echo "Merge $file"
+cat "$file" >> ../SRS1219086.fastq && rm "$file"
+done
+
+for file in *56* *57* *58*
+do
+echo "Merge $file"
+cat "$file" >> ../SRS1219089.fastq && rm "$file"
+done
+
+# Compress fastq files (time-consuming)
+parallel --gnu gzip ::: *fastq
+```
+
+## FastQC on raw sequence data
+
+Shell:
+```{bash eval=FALSE}
+# Create a new directory
+mkdir output_fastqc
+
+# FastQC 
+fastqc -t 32 -o ../output_fastqc *.fastq.gz
+
+# Use MultiQC to parse summary statistics 
+multiqc ../output_fastqc -o ../output_fastqc
+```
+
+## Trim adaptors
+
+```{bash eval=FALSE}
+# Warning: ONLY use GNU parallel when nobody else is using the server! (trimming uses a lot of CPU!!!)
+# FastQC  will be performed after trimming
+parallel trim_galore --illumina --fastqc ::: *.fastq.gz
+
+# MultiQC
+multiqc .
+```
+
+## STAR alginment
+First process the human reference genome FASTA file into an index that allows the aligner to access.
+
+```{bash eval=FALSE}
+# Download human reference genome GRCh38 FASTA file
+curl -O ftp://ftp.ensembl.org/pub/release-97/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.toplevel.fa.gz
+gunzip Homo_sapiens.GRCh38.dna.toplevel.fa.gz
+
+# Download gene model annotation GTF file from the same release 
+curl -O ftp://ftp.ensembl.org/pub/release-97/gtf/homo_sapiens/Homo_sapiens.GRCh38.97.gtf.gz
+gunzip Homo_sapiens.GRCh38.97.gtf.gz
+
+# Create STAR genome index
+# All samples have sequences of a single length (100bp).
+STAR --runThreadN 16 \
+--limitGenomeGenerateRAM 152003700778 \
+--runMode genomeGenerate \
+--genomeDir /data/home/lingzili/GRCh38_genome/ \
+--genomeFastaFiles /data/home/lingzili/GRCh38_genome/Homo_sapiens.GRCh38.dna.toplevel.fa \
+--sjdbGTFfile /data/home/lingzili/GRCh38_genome/Homo_sapiens.GRCh38.97.gtf \
+--sjdbOverhang 99
 
 ```
 
+Then use STAR (v2.7.1a) to map reads to the hg38 genome. 
+```{bash eval=FALSE}
+# Align single-end reads with STAR
+ls *.fq.gz |while read id
+do baseFilename=`basename $id _trimmed.fq.gz`
+STAR --genomeDir /data/Genomes/human/hg38/star/index_with_100bp_overhang/ \
+--runThreadN 32 \
+--readFilesIn $id \
+--readFilesCommand zcat \
+--outFileNamePrefix /data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/output/STAR_hg38/${baseFilename}_ \
+--outBAMsortingThreadN 16 \
+--outSAMtype BAM SortedByCoordinate \
+--outSAMunmapped Within
+echo "${baseFilename} is aligned"
+done
+```
+
+## Quality control of mapped reads
+### Alignment summary
+It is expected that more than 70% of the reads should uniquely map to the reference genome. Contamination, low quality sequencing data, or poor library contruction may result in <60% uniquely aligned reads.
+
+### Insert size (Picard)
+
+### rRNA percentage
+Ribosomal RNA (rRNA) often exceeding 90% of the total RNA. It is expected that prior library treatment of rRNA removal should result in less than 5% of the reads mapped to rRNA sequences.
+
+
+### Read distribution
+It is expected that distribition profiles should be similar across samples. Less than 20% intronic mapped reads are expected in mRNA-seq libraries, whereas more than 40% in total RNA-seq libraries.
+
+
+### Gene body coverage
+Uniform distributed reads across genebodies is a prerequisite for accurate quantification of gene expression. The line plots should look like this: "∩". mRNA-seq library preparation typically uses oligo-dT beads to capture mature transcripts and can be prone to 3' bias in genebody coverage if degraded RNA (RIN < 7) is used as input, which may potentially introduce quantification bias.
 
 
 
+### Junction saturation
 
+
+## Differential gene expression using DESeq2
+We considered genes with an FDR<.1 as significantly differentially expressed.
+
+### Correlation Heatmap
+**Spearman correlation heatmap between biological replicates**
+
+**Heatmap with pre-defined genes**
+With 50 most variable genes
+
+### Volcano plot
+
+### GOTerm analysis with GOstats
+
+### KEGG pathway with GAGE and clusterProfiler
+
+### Gene discovery rate (detected genes vs. reads)
+See <Gene Discovery Rate in RNA-seq data>(http://www.nxn.se/valent/gene-discovery-rate-in-rna-seq-data)
+
+## Unsupervised clustering
+### PCA
+Principle component 1 (PC1) accounts for the most amount of variation across samples, and PC2 the second most.
+
+## Optional: Batch correction

@@ -46,7 +46,15 @@ Example:
 
 1       ensembl_havana  gene    5588466 5606131 .       +       .       gene_id "ENSMUSG00000025905"; gene_version "9"; gene_name "Oprk1"; gene_source "ensembl_havana"; gene_biotype "protein_coding";
 
-## kallisto
+## Transcript abundance quantifier: kallisto
+
+Advantages:
+- Correct for any potential changes in gene length across samples (e.g., from differential isoform usage)
+- Faster and require less memory and disk usage compared to alignment-based methods
+- Avoid discarding fragments that can align to multiple genes with homologous sequence
+
+Disadvantage:
+- Not for novel transcript discovery
 
 To check the version of kallisto, type in command line:
 ```{bash echo = TRUE, eval = FALSE}
