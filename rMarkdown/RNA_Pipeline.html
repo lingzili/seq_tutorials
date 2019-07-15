@@ -7,6 +7,7 @@
 <meta charset="utf-8" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
 <meta name="author" content="LLi" />
@@ -352,18 +353,6 @@ summary {
 }
 </style>
 
-<script>
-$(document).ready(function () {
-  window.buildTabsets("TOC");
-});
-
-$(document).ready(function () {
-  $('.tabset-dropdown > .nav-tabs > li').click(function () {
-    $(this).parent().toggleClass('nav-tabs-open')
-  });
-});
-</script>
-
 <!-- code folding -->
 
 
@@ -426,7 +415,7 @@ pre { /* Code block - determines code spacing between lines */
 <pre class="r"><code># Download Summary and RunInfo csv files of seq data from NCBI SRA website manually
 
 # Read csv files in R and display with scroller
-sra_result &lt;- read.csv(&quot;~/seq_tutorials/sra_result.csv&quot;)
+sra_result &lt;- read.csv(&quot;~/seq_tutorials/data/sra_result.csv&quot;)
 
 kable(sra_result, caption = &quot;sra_result.csv snapshot&quot;) %&gt;%
   kable_styling() %&gt;%
@@ -1714,7 +1703,7 @@ other
 </tbody>
 </table>
 </div>
-<pre class="r"><code>SraRunInfo &lt;- read.csv(&quot;~/seq_tutorials/SraRunInfo.csv&quot;)
+<pre class="r"><code>SraRunInfo &lt;- read.csv(&quot;~/seq_tutorials/data/SraRunInfo.csv&quot;)
 
 kable(SraRunInfo, caption = &quot;SraRunInfo.csv snapshot&quot;) %&gt;%
   kable_styling() %&gt;%
@@ -8842,8 +8831,8 @@ GSM1978243: ATAC-seq Alpha1; Homo sapiens; OTHER
 </table>
 </div>
 <pre class="r"><code># Save csv files
-write.csv(GSE76268_runInfo, &quot;GSE76268_runInfo.csv&quot;)
-write.csv(cat_runInfo, &quot;cat_runInfo.csv&quot;)</code></pre>
+write.csv(GSE76268_runInfo, &quot;./data/GSE76268_runInfo.csv&quot;)
+write.csv(cat_runInfo, &quot;./data/cat_runInfo.csv&quot;)</code></pre>
 <p>Then download SRA files to Linux server.</p>
 <p>Shell:</p>
 <pre class="bash"><code># Create a new directory for fastq files
@@ -8918,13 +8907,13 @@ done
 # Compress fastq files (time-consuming)
 parallel --gnu gzip ::: *fastq</code></pre>
 </div>
-<div id="fastqc" class="section level2">
-<h2>fastqc</h2>
+<div id="fastqc-on-raw-sequence-data" class="section level2">
+<h2>FastQC on raw sequence data</h2>
 <p>Shell:</p>
 <pre class="bash"><code># Create a new directory
 mkdir output_fastqc
 
-# fastqc
+# FastQC 
 fastqc -t 32 -o ../output_fastqc *.fastq.gz
 
 # Use MultiQC to parse summary statistics 
@@ -8933,7 +8922,7 @@ multiqc ../output_fastqc -o ../output_fastqc</code></pre>
 <div id="trim-adaptors" class="section level2">
 <h2>Trim adaptors</h2>
 <pre class="bash"><code># Warning: ONLY use GNU parallel when nobody else is using the server! (trimming uses a lot of CPU!!!)
-# fastqc will be performed after trimming
+# FastQC  will be performed after trimming
 parallel trim_galore --illumina --fastqc ::: *.fastq.gz
 
 # MultiQC
@@ -8941,18 +8930,104 @@ multiqc .</code></pre>
 </div>
 <div id="star-alginment" class="section level2">
 <h2>STAR alginment</h2>
-<p>We used STAR (v2.5.3a) to map reads to the hg19 genome, allowing for up to 10 mismatches. We retained reads aligned uniquely to one genomic location for subsequent analysis.</p>
+<p>First process the human reference genome FASTA file into an index that allows the aligner to access.</p>
+<pre class="bash"><code># Download human reference genome GRCh38 FASTA file
+curl -O ftp://ftp.ensembl.org/pub/release-97/fasta/homo_sapiens/dna/Homo_sapiens.GRCh38.dna.toplevel.fa.gz
+gunzip Homo_sapiens.GRCh38.dna.toplevel.fa.gz
+
+# Download gene model annotation GTF file from the same release 
+curl -O ftp://ftp.ensembl.org/pub/release-97/gtf/homo_sapiens/Homo_sapiens.GRCh38.97.gtf.gz
+gunzip Homo_sapiens.GRCh38.97.gtf.gz
+
+# Create STAR genome index (Lasted for 6 hours!!)
+# All samples have sequences of a single length (100bp).
+STAR --runThreadN 16 \
+--limitGenomeGenerateRAM 152003700778 \
+--runMode genomeGenerate \
+--genomeDir /data/home/lingzili/GRCh38_genome/ \
+--genomeFastaFiles /data/home/lingzili/GRCh38_genome/Homo_sapiens.GRCh38.dna.toplevel.fa \
+--sjdbGTFfile /data/home/lingzili/GRCh38_genome/Homo_sapiens.GRCh38.97.gtf \
+--sjdbOverhang 99</code></pre>
+<p>Then use STAR (v2.7.1a) to map reads to the hg38 genome.</p>
+<pre class="bash"><code># Align single-end reads with STAR
+ls *.fq.gz |while read id
+do baseFilename=`basename $id _trimmed.fq.gz`
+STAR --genomeDir /data/home/lingzili/GRCh38_genome/STAR \
+--runThreadN 32 \
+--readFilesIn $id \
+--readFilesCommand zcat \
+--outFileNamePrefix /data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/STAR/${baseFilename}_ \
+--outBAMsortingThreadN 32 \
+--outSAMtype BAM SortedByCoordinate \
+--outSAMunmapped Within # This should have been set as None (default)
+echo &quot;${baseFilename} is aligned&quot;
+done
+
+# Index BAM files
+# Only use parallel when nobody else uses the server!!
+parallel &quot;samtools index {}&quot; ::: *bam</code></pre>
 </div>
-<div id="differential-gene-expression-using-deseq2" class="section level2">
-<h2>Differential gene expression using DESeq2</h2>
-<p>We considered genes with an FDR&lt;.1 as significantly differentially expressed.</p>
+<div id="visulization-by-igv" class="section level2">
+<h2>Visulization by IGV</h2>
+<p>Download .bam and .bai file to local desktop. IGV requires the .bai file to be in the same location as the .bam file that is loaded into IGV, but there is no direct use for that file.</p>
 </div>
-<div id="quality-control" class="section level2">
-<h2>Quality control</h2>
-<div id="gene-discovery-rate-detected-genes-vs.-reads" class="section level3">
-<h3>Gene discovery rate (detected genes vs. reads)</h3>
-<p>See <Gene Discovery Rate in RNA-seq data>(<a href="http://www.nxn.se/valent/gene-discovery-rate-in-rna-seq-data" class="uri">http://www.nxn.se/valent/gene-discovery-rate-in-rna-seq-data</a>)</p>
+<div id="quality-control-of-mapped-reads" class="section level2">
+<h2>Quality control of mapped reads</h2>
+<p>Quality metrics are accessed by RNASeQC, Picard and MultiQC.</p>
+<pre class="bash"><code># The process needs to be optimized for parallel
+bash mapQC.sh
+
+# MultiQC all mapping stats
+multiqc .</code></pre>
+<pre class="bash"><code># RNA-seq reads coverage over gene body over all BAM files
+# Only input sorted and indexed BAM files
+geneBody_coverage.py -r $housekeepBED -i $sortedIndexedBAM -o geneBody_GSE76268
+</code></pre>
+<div id="insert-size-picard" class="section level3">
+<h3><strong>Insert size (Picard)</strong></h3>
+<p>There is no way to calculate average fragment size based on single-end sequencing data.</p>
 </div>
+<div id="alignment-summary" class="section level3">
+<h3><strong>Alignment summary</strong></h3>
+<p>It is expected that more than 70% of the reads should uniquely map to the reference genome. Contamination, low quality sequencing data, or poor library contruction may result in &lt;60% uniquely aligned reads.</p>
+</div>
+<div id="rrna-percentage" class="section level3">
+<h3><strong>rRNA percentage</strong></h3>
+<p>Ribosomal RNA (rRNA) often exceeding 90% of the total RNA. It is expected that prior library treatment of rRNA removal should result in less than 5% of the reads mapped to rRNA sequences. Excess rRNA (&gt; 2%) will normally have to be filtered out so that differences in rRNA mapped reads across samples do not affect alignment rates and skew subsequent normalization of the data.</p>
+</div>
+<div id="read-distribution" class="section level3">
+<h3><strong>Read distribution</strong></h3>
+<p>It is expected that distribition profiles should be similar across samples. Less than 20% intronic mapped reads are expected in mRNA-seq libraries, whereas more than 40% in total RNA-seq libraries. A high intronic mapping suggests possible genomic DNA contamination and/or pre-mRNA. Around 55% of reads are normally observed mapping to exons.</p>
+</div>
+<div id="gene-body-coverage" class="section level3">
+<h3><strong>Gene body coverage</strong></h3>
+<p>Uniform distributed reads across genebodies is a prerequisite for accurate quantification of gene expression. The line plots should look like this: “∩”. mRNA-seq library preparation typically uses oligo-dT beads to capture mature transcripts and can be prone to 3’ bias in genebody coverage if degraded RNA (RIN &lt; 7) is used as input, which may potentially introduce quantification bias.</p>
+</div>
+<div id="transcript-integrity-number-tin" class="section level3">
+<h3><strong>Transcript integrity number (TIN)</strong></h3>
+<p>TIN is to measure RNA integrity of individual transcripts/genes. Samples with lower median TIN score of all the transcripts usually had more skewed gene body coverage.</p>
+</div>
+</div>
+<div id="generate-a-count-matrix-using-featurecounts" class="section level2">
+<h2>Generate a count matrix using featureCounts</h2>
+<p>Only uniquely mapped reads are counted at the gene level. Total read count of a gene (meta-feature) is the sum of reads mapped to each of the exons (feature).</p>
+<pre class="bash"><code># Count features in all BAM files together (single-end reads)
+# Required option for specifying path to, and name of the text output (count matrix)
+# 2&gt; redirects all the information from the terminal/screen into a file
+GTF=&quot;/data/home/lingzili/GRCh38_genome/WholeGenomeFasta/Homo_sapiens.GRCh38.97.gtf&quot;
+outputFile=&quot;/data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/featurecount/GSE76268_featureCounts.txt&quot; 
+terminalLog=&quot;/data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/featurecount/GSE76268_featureCounts.output&quot; 
+featureCounts -T 16 --verbose -a $GTF -o $outputFile *.bam 2&gt;$terminalLog
+
+# MultiQC count stats
+cd /data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/featurecount
+multiqc .</code></pre>
+<p>The output txt file contains columns: Geneid, Chr, Start, End, Strand, Length and names of BAM files. We need to extract Geneid and their counts in each BAM file, which are needed for downstream processing.</p>
+<pre class="bash"><code># Inspect txt file
+head -n 3 GSE76268_featureCounts.txt
+
+# Extract Geneid and their counts in each BAM file 
+cut -f1,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21 GSE76268_featureCounts.txt &gt;GSE76268_rMatrix.txt</code></pre>
 </div>
 
 
@@ -8972,6 +9047,23 @@ $(document).ready(function () {
 
 
 </script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open')
+  });
+});
+</script>
+
+<!-- code folding -->
+
 
 <!-- dynamically load mathjax for compatibility with self-contained -->
 <script>

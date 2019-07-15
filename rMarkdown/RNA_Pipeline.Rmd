@@ -219,35 +219,25 @@ STAR --runThreadN 16 \
 Then use STAR (v2.7.1a) to map reads to the hg38 genome. 
 ```{bash eval=FALSE}
 # Align single-end reads with STAR
-# If the BAM file needs to be sorted by name later on, remove "SortedByCoordinate" and "outBAMsortingThreadN" from the command!
 ls *.fq.gz |while read id
 do baseFilename=`basename $id _trimmed.fq.gz`
 STAR --genomeDir /data/home/lingzili/GRCh38_genome/STAR \
---runThreadN 16 \
+--runThreadN 32 \
 --readFilesIn $id \
 --readFilesCommand zcat \
 --outFileNamePrefix /data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/STAR/${baseFilename}_ \
---outBAMsortingThreadN 16 \
+--outBAMsortingThreadN 32 \
 --outSAMtype BAM SortedByCoordinate \
---outSAMunmapped Within
+--outSAMunmapped Within # This should have been set as None (default)
 echo "${baseFilename} is aligned"
 done
-```
 
-## Visulization by IGV
-First sort (some downstream applications need sort by name order) and then index the BAM file
-```{bash eval=FALSE}
-# Sort by name order
-for j in *.bam
-do echo "Begin processing $j"
-baseFilename=`basename $j _Aligned.sortedByCoord.out.bam`
-samtools sort -n -@ 32 -o ${baseFilename}.bam $j
-echo "${baseFilename}.bam is done"
-done
-
+# Index BAM files
 # Only use parallel when nobody else uses the server!!
 parallel "samtools index {}" ::: *bam
 ```
+
+## Visulization by IGV
 
 Download .bam and .bai file to local desktop. IGV requires the .bai file to be in the same location as the .bam file that is loaded into IGV, but there is no direct use for that file.
 
@@ -255,17 +245,18 @@ Download .bam and .bai file to local desktop. IGV requires the .bai file to be i
 Quality metrics are accessed by RNASeQC, Picard and MultiQC.
 
 ```{bash eval=FALSE}
+# The process needs to be optimized for parallel
 bash mapQC.sh
-```
 
+# MultiQC all mapping stats
+multiqc .
+```
 
 ```{bash eval=FALSE}
 # RNA-seq reads coverage over gene body over all BAM files
 # Only input sorted and indexed BAM files
 geneBody_coverage.py -r $housekeepBED -i $sortedIndexedBAM -o geneBody_GSE76268
 
-# MultiQC all mapping stats
-multiqc .
 ```
 
 ### **Insert size (Picard)**
@@ -309,36 +300,6 @@ The output txt file contains columns: Geneid, Chr, Start, End, Strand, Length an
 # Inspect txt file
 head -n 3 GSE76268_featureCounts.txt
 
-# Extract Geneid and their counts in each BAM file (starting from column 7)
-cut -f1,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21 GSE76268_featureCounts.txt > GSE76268_rMatrix.txt
+# Extract Geneid and their counts in each BAM file 
+cut -f1,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21 GSE76268_featureCounts.txt >GSE76268_rMatrix.txt
 ```
-
-Then download the txt file and use R to modify the header line to remove the extensions followed by sample ID.
-
-```{r}
-
-```
-
-## Differential gene expression using DESeq2
-We considered genes with an FDR<.1 as significantly differentially expressed.
-
-### Correlation Heatmap
-**Spearman correlation heatmap between biological replicates**
-
-**Heatmap with pre-defined genes**
-With 50 most variable genes
-
-### Volcano plot
-
-### GOTerm analysis with GOstats
-
-### KEGG pathway with GAGE and clusterProfiler
-
-### Gene discovery rate (detected genes vs. reads)
-See <Gene Discovery Rate in RNA-seq data>(http://www.nxn.se/valent/gene-discovery-rate-in-rna-seq-data)
-
-## Unsupervised clustering
-### PCA
-Principle component 1 (PC1) accounts for the most amount of variation across samples, and PC2 the second most.
-
-## Optional: Batch correction
