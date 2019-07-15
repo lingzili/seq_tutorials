@@ -50,13 +50,13 @@ R:
 # Download Summary and RunInfo csv files of seq data from NCBI SRA website manually
 
 # Read csv files in R and display with scroller
-sra_result <- read.csv("~/seq_tutorials/sra_result.csv")
+sra_result <- read.csv("~/seq_tutorials/data/sra_result.csv")
 
 kable(sra_result, caption = "sra_result.csv snapshot") %>%
   kable_styling() %>%
   scroll_box(width = "100%", height = "150px")
 
-SraRunInfo <- read.csv("~/seq_tutorials/SraRunInfo.csv")
+SraRunInfo <- read.csv("~/seq_tutorials/data/SraRunInfo.csv")
 
 kable(SraRunInfo, caption = "SraRunInfo.csv snapshot") %>%
   kable_styling() %>%
@@ -82,8 +82,8 @@ kable(cat_runInfo, caption = "Information for concatenating RNA-seq fastq files"
 ```
 ```{r eval=FALSE}
 # Save csv files
-write.csv(GSE76268_runInfo, "GSE76268_runInfo.csv")
-write.csv(cat_runInfo, "cat_runInfo.csv")
+write.csv(GSE76268_runInfo, "./data/GSE76268_runInfo.csv")
+write.csv(cat_runInfo, "./data/cat_runInfo.csv")
 
 ```
 
@@ -255,25 +255,9 @@ Download .bam and .bai file to local desktop. IGV requires the .bai file to be i
 Quality metrics are accessed by RNASeQC, Picard and MultiQC.
 
 ```{bash eval=FALSE}
-# Define variables first
-rRNAbed="/data/home/lingzili/genomeTools/RSeQC-2.3.7/rRNA_bed/hg38_rRNA.bed"
-split_bam="/data/home/lingzili/genomeTools/RSeQC-2.3.7/scripts/split_bam.py"
-read_distribution="/data/home/lingzili/genomeTools/RSeQC-2.3.7/scripts/read_distribution.py"
-housekeepBED="/data/home/lingzili/genomeTools/RSeQC-2.3.7/rRNA_bed/hg38.HouseKeepingGenes.bed"
-sortedIndexedBAM="/data/home/lingzili/Islet_Public_Dataset/Human_bulk_RNA/GSE76268/analysis/STAR/sortedByCoord"
-hg38RefBED="/data/home/lingzili/genomeTools/RSeQC-2.3.7/rRNA_bed/hg38_RefSeq.bed"
-tin="/data/home/lingzili/genomeTools/RSeQC-3.0.0/scripts/tin.py"
-
-# The following commands includes samtools flagstat, rRNA count, read genomic distribution and transcript integrity number (TIN)
-# Input should be sorted and indexed BAM files
-for j in *.bam
-do baseFilename=`basename $j .bam`
-samtools flagstat -@ 32 $j > ${baseFilename}.stat.txt # Get stat from BAM file
-python $split_bam -i $j -r $rRNAbed -o ${baseFilename} 2>${baseFilename}.rrna.output
-python $read_distribution -i $j -r $hg38RefBED
-python $tin -i $j -r $hg38RefBED
-done 
+bash mapQC.sh
 ```
+
 
 ```{bash eval=FALSE}
 # RNA-seq reads coverage over gene body over all BAM files
@@ -284,22 +268,22 @@ geneBody_coverage.py -r $housekeepBED -i $sortedIndexedBAM -o geneBody_GSE76268
 multiqc .
 ```
 
-### Insert size (Picard)
+### **Insert size (Picard)**
 There is no way to calculate average fragment size based on single-end sequencing data.
 
-### Alignment summary
+### **Alignment summary**
 It is expected that more than 70% of the reads should uniquely map to the reference genome. Contamination, low quality sequencing data, or poor library contruction may result in <60% uniquely aligned reads.
 
-### rRNA percentage
+### **rRNA percentage**
 Ribosomal RNA (rRNA) often exceeding 90% of the total RNA. It is expected that prior library treatment of rRNA removal should result in less than 5% of the reads mapped to rRNA sequences. Excess rRNA (> 2%) will normally have to be filtered out so that differences in rRNA mapped reads across samples do not affect alignment rates and skew subsequent normalization of the data.
 
-### Read distribution
+### **Read distribution**
 It is expected that distribition profiles should be similar across samples. Less than 20% intronic mapped reads are expected in mRNA-seq libraries, whereas more than 40% in total RNA-seq libraries. A high intronic mapping suggests possible genomic DNA contamination and/or pre-mRNA. Around 55% of reads are normally observed mapping to exons.
 
-### Gene body coverage
+### **Gene body coverage**
 Uniform distributed reads across genebodies is a prerequisite for accurate quantification of gene expression. The line plots should look like this: "∩". mRNA-seq library preparation typically uses oligo-dT beads to capture mature transcripts and can be prone to 3' bias in genebody coverage if degraded RNA (RIN < 7) is used as input, which may potentially introduce quantification bias.
 
-### Transcript integrity number (TIN)
+### **Transcript integrity number (TIN)**
 TIN is to measure RNA integrity of individual transcripts/genes. Samples with lower median TIN score of all the transcripts usually had more skewed gene body coverage.
 
 ## Generate a count matrix using featureCounts
