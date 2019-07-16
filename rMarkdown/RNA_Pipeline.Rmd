@@ -272,7 +272,7 @@ Ribosomal RNA (rRNA) often exceeding 90% of the total RNA. It is expected that p
 It is expected that distribition profiles should be similar across samples. Less than 20% intronic mapped reads are expected in mRNA-seq libraries, whereas more than 40% in total RNA-seq libraries. A high intronic mapping suggests possible genomic DNA contamination and/or pre-mRNA. Around 55% of reads are normally observed mapping to exons.
 
 ### **Gene body coverage**
-Uniform distributed reads across genebodies is a prerequisite for accurate quantification of gene expression. The line plots should look like this: "∩". mRNA-seq library preparation typically uses oligo-dT beads to capture mature transcripts and can be prone to 3' bias in genebody coverage if degraded RNA (RIN < 7) is used as input, which may potentially introduce quantification bias.
+Uniform distributed reads across genebodies is a prerequisite for accurate quantification of gene expression. The line plots should look like this: "∩". mRNA-seq library preparation typically uses oligo-dT beads to capture mature transcripts and can be prone to 3' bias in genebody coverage if degraded RNA (RIN < 7) is used as input, which may introduce quantification bias.
 
 ### **Transcript integrity number (TIN)**
 TIN is to measure RNA integrity of individual transcripts/genes. Samples with lower median TIN score of all the transcripts usually had more skewed gene body coverage.
