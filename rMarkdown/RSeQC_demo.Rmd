@@ -31,13 +31,15 @@ The tools involved are:
 - **FastQC** <https://www.bioinformatics.babraham.ac.uk/projects/fastqc/>
 - **MultiQC** <https://multiqc.info/>
 - **RSeQC** <http://rseqc.sourceforge.net/>
-- **Picard**<https://broadinstitute.github.io/picard/>
+- **Picard** <https://broadinstitute.github.io/picard/>
 
-## Output of aligner: SAM/BAM
-The SAM (Sequence Alignment Map) file contains information for each individual read and its alignment to the genome. BAM is a binary, compressed version of the SAM file.
+## Output of aligner: SAM/BAM file
+
+- The SAM (Sequence Alignment Map) file contains information for **each individual read** and **its alignment to the genome**. 
+- BAM is a binary, compressed version of the SAM file.
 
 To view SAM/BAM file, type:
-```{bash eval=FALSE}
+```{bash Samtools view, eval=FALSE}
 file="your SAM/BAM file path"
 samtools view -h $file | head -n 27
 ```
@@ -83,7 +85,7 @@ Only for pair-end library! There is no way to calculate average fragment size ba
 
 ## Insert size distribution (Picard)
 
-```{bash eval=FALSE}
+```{bash CollectInsertSizeMetrics, eval=FALSE}
 # Define file path
 locate picard.jar
 picardPath="you file path to picard.jar"
@@ -107,7 +109,7 @@ java -jar $picardPath CollectInsertSizeMetrics \
 
 **insert_size_metrics.txt**
 
-A data table that lists the read counts that corresponds to each insert size.
+A data table that lists the **read counts** that corresponds to **each insert size**
 
 **insert_size_histogram.pdf**
 
@@ -117,18 +119,20 @@ knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/SM4998_h
 ```
 
 ## rRNA percentage
-Ribosomal RNA (rRNA) often exceeding 90% of the total RNA. Prior library treatment of rRNA removal should result in less than 5% of the reads mapped to rRNA sequences.
+Ribosomal RNA (rRNA) often exceeds 90% of the total RNA. Prior library treatment of rRNA removal should result in less than 5% of the reads mapped to rRNA sequences.
 
-```{bash eval=FALSE}
+```{bash rRNA BAM, eval=FALSE}
 # Define file path
 locate split_bam
 split_bam="your file path to split_bam.py"
 
 file="your BAM file path" # BAM file should be sorted and indexed
 rRNA_bed="your rRNA BED file path"
-prefix_bam="prefix your output BAM file"
+prefix_bam="prefix of your output BAM file"
 
 python $split_bam -i $file -r $rRNA_bed -o $prefix_bam 1>>$prefix_bam.output 2>/dev/null
+
+# Note: STDIN is represented by 0, STDOUT by 1, and STDERR by 2
 ```
 
 ## Ouput of split_bam.py
@@ -149,11 +153,11 @@ Excess rRNA (> 2%) will normally have to be filtered out! Because rRNA mapped re
 - For mRNA-seq libraries, around 55% of reads are normally observed mapping to exons and less than 20% intronic mapped reads are expected
 - For total RNA-seq libraries, more than 40% are observed mapping to introns
 - Distribition profiles should be similar across samples
-```{r pie chart, echo=FALSE, fig.height=4, fig.width=4}
+```{r Pie chart, echo=FALSE, fig.height=4, fig.width=4}
 # Create a pie chart of reads genomic origin
 SM4998_distribution <- read_excel("C:/Users/lingzili/Documents/seq_tutorials/data/SM4998.distribution.xlsx", col_types = c("text", "numeric", "numeric", "numeric", "numeric"))
 
-subset_dist <- data.frame(SM4998_distribution[13:15, c(1, 5)])
+subset_dist <- data.frame(SM4998_distribution[11:13, c(1, 5)])
 
 blank_theme <- theme_minimal() +
   theme(
@@ -171,15 +175,15 @@ piePlot1 <- ggplot(subset_dist, aes(x = "", y = Per_Assigned_Tag, fill = Group))
 piePlot1 + geom_bar(width = 1, stat = "identity") +
   coord_polar("y") +
   blank_theme +
-  geom_text(aes(
-    y = Per_Assigned_Tag / 3 + c(0, cumsum(Per_Assigned_Tag)[-length(Per_Assigned_Tag)]),
-    label = percent(Per_Assigned_Tag)), size = 4)
+  ggtitle("SM4998 (degraded)") +
+  geom_text(aes(y = Per_Assigned_Tag / 6 + c(0, cumsum(Per_Assigned_Tag)[-length(Per_Assigned_Tag)]), 
+                label = percent(Per_Assigned_Tag)), size = 4)
 ```
 
 ## read_distribution.py
 
-```{bash eval=FALSE}
-# Define fine path
+```{bash Read distribution, eval=FALSE}
+# Define file path
 locate read_distribution
 read_distribution="yout file path to read_distribution.py"
 
@@ -191,20 +195,26 @@ python $read_distribution -i $file -r $RefBED 1>>readDistribution.output.txt 2>/
 
 ## Output of read_distribution.py
 
-```{r echo=FALSE}
-cat(readLines("C:/Users/lingzili/Documents/seq_tutorials/data/SM4998.distribution.output.txt"), sep = "
+```{r Output read distribution, echo=FALSE}
+cat(readLines("C:/Users/lingzili/Documents/seq_tutorials/data/SM4998.readDist.txt"), sep = "
 ")
 ```
 
 ## Gene body coverage
 
-Calculate the RNA-seq reads coverage over gene body. Uniform distributed reads across genebodies is a prerequisite for accurate quantification of gene expression!
+Calculate the RNA-seq reads coverage over gene body. 
 
-```{bash eval=FALSE}
+```{r example geneBodyCoverage, echo=FALSE, eval=TRUE, out.width = "600px"}
+knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/Example_geneBodyCoverage.png")
+```
+
+## geneBody_coverage.py
+
+```{bash Genebody coverage, eval=FALSE}
 locate geneBody_coverage
 geneBody_coverage="your file path to geneBody_coverage.py"
 
-housekeepBED="your file path to hg38.HouseKeepingGenes.bed"
+housekeepBED="your file path to housekeeping gene BED file"
 
 # Only input sorted and indexed BAM files
 file1="your BAM file path"
@@ -220,24 +230,34 @@ python $geneBody_coverage -r $housekeepBED -i $file1,$file2 -o $prefix_output
 
 - The line plots should look like this: "∩". 
 - Using oligo-dT beads for mRNA-seq prep can be prone to 3' bias in genebody coverage if degraded RNA (RIN < 7) is used as input, which may introduce quantification bias.
-```{r geneBodyCoverage, echo=FALSE, eval=TRUE, out.width = "400px"}
+```{r plot geneBodyCoverage, echo=FALSE, eval=TRUE, out.width = "400px"}
 knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/geneBodyCoverage.png")
 ```
 
 ## Supplementary information
 
-```{bash eval=FALSE}
+```{bash Ref gene download, eval=FALSE}
 # Download mm10 rRNA BED file
 wget https://iweb.dl.sourceforge.net/project/rseqc/BED/Mouse_Mus_musculus/mm10_rRNA.bed.gz
 gunzip mm10_rRNA.bed.gz
-
 # Download mm10 Ref genome BED file
 wget https://iweb.dl.sourceforge.net/project/rseqc/BED/Mouse_Mus_musculus/mm10_RefSeq.bed.gz
 gunzip mm10_RefSeq.bed.gz
-
 # Donwload mm10 housekeeping BED file
 wget https://iweb.dl.sourceforge.net/project/rseqc/BED/Mouse_Mus_musculus/mm10.HouseKeepingGenes.bed.gz
 gunzip mm10.HouseKeepingGenes.bed.gz
+
+# Download human geneome BED files, see: https://sourceforge.net/projects/rseqc/files/BED/
 ```
 
 To get the most recent annotation, use UCSC's Table Browser <https://genome.ucsc.edu/cgi-bin/hgTables?command=start>
+
+## Bibliography
+
+- Liguo Wang, Shengqin Wang, Wei Li (2012). RSeQC: quality control of RNA-seq experiments. Bioinformatics, 28(16), 2184–2185. http://doi.org/10.1093/bioinformatics/bts356
+
+- “Picard Toolkit.” 2019. Broad Institute, GitHub Repository. http://broadinstitute.github.io/picard/
+
+- Philip Ewels, Måns Magnusson, Sverker Lundin and Max Käller (2016). MultiQC: Summarize analysis results for multiple tools and samples in a single report. Bioinformatics, 32(19), 3047–3048. https://doi.org/10.1093/bioinformatics/btw354 
+
+- Simon Andrews (2010). FastQC: a quality control tool for high throughput sequence data. Available online at: http://www.bioinformatics.babraham.ac.uk/projects/fastqc
