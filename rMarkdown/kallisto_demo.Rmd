@@ -1,13 +1,24 @@
 ---
 title: "kallisto demo"
 author: "JWK & Islet group coding club meet-up"
-date: "July 17, 2019"
+date: "July 30, 2019"
 output:
-  slidy_presentation: default
+  ioslides_presentation: default
+  powerpoint_presentation: default
 ---
+<style type="text/css">
+code.r{
+  font-size: 14px;
+}
+pre {
+  font-size: 14px
+}
+</style>
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(knitr)
+library(scales)
 ```
 
 ## Download mouse transcriptome reference
@@ -49,8 +60,11 @@ Example:
 ## Transcript abundance quantifier: kallisto
 
 Advantages:
+
 - Correct for any potential changes in gene length across samples (e.g., from differential isoform usage)
+
 - Faster and require less memory and disk usage compared to alignment-based methods
+
 - Avoid discarding fragments that can align to multiple genes with homologous sequence
 
 Disadvantage:
@@ -61,7 +75,15 @@ To check the version of kallisto, type in command line:
 kallisto version
 ```
 
+## Principles of kallisto
+
+```{r Pair-end reads, eval=TRUE, echo=FALSE, out.width = "280px", fig.cap="Alignment based approach"}
+knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/biostar_pair_end.png")
+```
+
 ## Build “transcriptome index”
+
+Input: Reference transciptome; 
 
 ```{bash echo = TRUE, eval = FALSE}
 kallisto index -i GRCm38.cdna.all.idx Mus_musculus.GRCm38.cdna.all.fa.gz
