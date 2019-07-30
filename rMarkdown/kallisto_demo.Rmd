@@ -21,9 +21,30 @@ library(knitr)
 library(scales)
 ```
 
+## Basic concept: k-mer
+
+k-mer typically refers to all the possible substrings of length k that are contained in a string.
+
+```{r k-mer, echo=FALSE}
+# Define a function to generate k-mers
+k_mers <- function(sequence, k) {
+  substring(sequence, 1:(nchar(sequence) - k + 1), k:nchar(sequence))
+}
+
+# Define input read
+input_read <- "TACCGA"
+cat(sprintf("input read = %s\n", input_read))
+
+# Print all possible k-mers
+for (k in 1:nchar(input_read)) {
+  cat(sprintf("k-mer = %s\n", k))
+  print(k_mers(sequence = input_read, k))
+}
+```
+
 ## Download mouse transcriptome reference
 
-Download FASTA and GTF files for cDNAs of mouse (GRCm38.p6) from Ensembl
+Download FASTA file for cDNAs of mouse (GRCm38.p6) from Ensembl
 <http://www.ensembl.org/Mus_musculus/Info/Index>
 
 ```{bash echo = TRUE, eval = FALSE}
@@ -32,11 +53,6 @@ cd kallisto_demo
 
 # Download mouse cDNA FASTA file
 wget ftp://ftp.ensembl.org/pub/release-97/fasta/mus_musculus/cdna/Mus_musculus.GRCm38.cdna.all.fa.gz
-gunzip Mus_musculus.GRCm38.cdna.all.fa.gz
-
-# Download mouse GTF file
-wget ftp://ftp.ensembl.org/pub/release-97/gtf/mus_musculus/Mus_musculus.GRCm38.97.gtf.gz
-
 ```
 
 ## FASTA
@@ -49,41 +65,26 @@ Example:
 AAAGTTTGACCGGCACTTTTAATGCAACAAAAAGCACCATGACCAAGGACACCGAAAACA
 GAAAGCGGGAATGTTTACTTGCTGTGTGGAGGTATTTAAAACTCAGAAGCTTGTAAGAGC
 
-## GTF (General Feature Format)
-
-Contains 9 columns of gene/transcript related features: **seqname, source, feature (e.g. Gene, Exon), start, end, score, strand, frame, attribute (e.g. gene_id, gene_name)**
-
-Example: 
-
-1       ensembl_havana  gene    5588466 5606131 .       +       .       gene_id "ENSMUSG00000025905"; gene_version "9"; gene_name "Oprk1"; gene_source "ensembl_havana"; gene_biotype "protein_coding";
-
-## Transcript abundance quantifier: kallisto
-
-Advantages:
-
-- Correct for any potential changes in gene length across samples (e.g., from differential isoform usage)
-
-- Faster and require less memory and disk usage compared to alignment-based methods
-
-- Avoid discarding fragments that can align to multiple genes with homologous sequence
-
-Disadvantage:
-- Not for novel transcript discovery
+## Start with kallisto
 
 To check the version of kallisto, type in command line:
 ```{bash echo = TRUE, eval = FALSE}
 kallisto version
 ```
 
-## Principles of kallisto
+To look for general help, type:
+```{bash echo = TRUE, eval = FALSE}
+kallisto
+```
 
-```{r Pair-end reads, eval=TRUE, echo=FALSE, out.width = "280px", fig.cap="Alignment based approach"}
-knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/biostar_pair_end.png")
+To look for specific help, for example on building an index, type:
+```{bash echo = TRUE, eval = FALSE}
+kallisto index
 ```
 
 ## Build “transcriptome index”
 
-Input: Reference transciptome; 
+Input: Reference transciptome; output: index file
 
 ```{bash echo = TRUE, eval = FALSE}
 kallisto index -i GRCm38.cdna.all.idx Mus_musculus.GRCm38.cdna.all.fa.gz
@@ -91,24 +92,39 @@ kallisto index -i GRCm38.cdna.all.idx Mus_musculus.GRCm38.cdna.all.fa.gz
 
 ## Quantification of transcript abundances
 
+In the "quant" function we specify:
+
+- number of threads to use (parameter "-t");
+- location of the trasncriptome index (parameter "-i");
+- kallisto output folder for each dataset (parameter "-o");
+- number of bootstrap samples to estimate the technical variance (parameter "-b");
+
+and finally, the location of the paired-end fastq, compressed or uncompressed.
+
+Note: For **single-end reads**, the parameters are different and please check the kallisto manual!
+
+## Quantification of transcript abundances
+
 Pair-end reads:
 ```{bash echo = TRUE, eval = FALSE}
-kallisto quant -t 2 -i GRCm38.cdna.all.idx -o kallisto_demo -b 100 reads_1.fastq.gz reads_2.fastq.gz
+kallisto quant -t 4 \
+-i GRCm38.cdna.all.idx \
+-o kallisto_<read_id> \
+-b 100 \
+reads_1.fastq.gz reads_2.fastq.gz
 ```
 
-Single-end reads:
-
-## Output of kallisto
-
-abundances.h5: HDF5 binary file containing run info, abundance esimates, bootstrap estimates, and transcript length information length
-
-abundances.tsv: Plaintext file of the abundance estimates
-
-run_info.json: Contains information about the run
+Note: **Bootstrapping** is the process of repeating the quantification analysis after resampling with replacement from the original data, in order to simulate random sampling associated with sequencing. In general, this number should be **at least 30**.
 
 ## What's next?
 
 **Sleuth**: A differential expression tool that accepts directly the outputs of kallisto (see: <https://pachterlab.github.io/sleuth/>)
+
+## Caution: When to use kallisto
+
+Douglas C. Wu, Jun Yao, Kevin S. Ho, Alan M. Lambowitz and Claus O. Wilke, [Limitations of alignment-free tools in total RNA-seq quantification](https://bmcgenomics.biomedcentral.com/articles/10.1186/s12864-018-4869-5#Sec4), BMC Genomics 19, Article number: 510 (2018)
+
+*"Accurate quantification of lowly-expressed or small RNA is difficult to achieve with alignment-free pipelines"*
 
 ## Bibliography
 kallisto, Pachter Lab <https://pachterlab.github.io/kallisto/>
