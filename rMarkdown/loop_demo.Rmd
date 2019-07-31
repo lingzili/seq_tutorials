@@ -1,0 +1,137 @@
+---
+title: "Automate analysis workflow"
+author: "Coding club meet-up"
+date: "7/31/2019"
+output: html_document
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 16px;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 28px;
+}
+h1 { /* Header 1 */
+  font-size: 24px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 20px;
+}
+h3 { /* Header 3 */
+    font-size: 18px;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Question
+
+Given that I have the following fastq files, I want to automate the alignment with kallisto. How to do?
+
+-rw-r--r-- 1 lingzili Mandrup 576940227 Jul 17 09:57 SM4393_R1.fq.gz
+
+-rw-r--r-- 1 lingzili Mandrup 596229266 Jul 17 09:57 SM4393_R2.fq.gz
+
+-rw-r--r-- 1 lingzili Mandrup 603128365 Jul 17 09:58 SM4394_R1.fq.gz
+
+-rw-r--r-- 1 lingzili Mandrup 627740583 Jul 17 09:58 SM4394_R2.fq.gz
+
+# Important concepts
+
+**Variable**
+
+Assign any name and value using the assignment operator: ‘=’. You can check the current definition of your variable by typing into your script: echo $variable_name
+
+Example:
+```{bash Variable, eval=FALSE}
+# Assign the name SM4393_R1.fq.gz to a variable called fq
+fq=SM4393_R1.fq.gz
+
+# Check the definition of the variable fq
+echo $fq
+```
+
+**Basename**
+
+To ensure that all the output files from the workflow are properly named with sample IDs, we need to extract the “base name” (or sample ID) from the name of the input file.
+
+```{bash Basename, eval=FALSE}
+# Grab base of filename for naming outputs
+basename $fq _R1.fq.gz
+
+# This syntax is necessary for assigning the output of a command to a variable.
+id=`basename $fq _R1.fq.gz`
+
+# Check the definition of the variable id
+echo "The sample ID is $id"
+```
+
+# Solution #1: for loop
+
+Syntax:
+```{bash Syntax for loop, eval=FALSE}
+for variable in list
+do
+execute commands
+done
+```
+
+# Solution #2: while loop
+
+Syntax:
+```{bash Syntax while loop, eval=FALSE}
+while condition_is_true
+do
+execute commands
+done
+```
+
+# Solution #3: write a shell script 
+
+**Some shell scripting rules**
+
+1) The first line in your script must be:
+```{bash First line, eval=FALSE}
+#!/bin/bash
+```
+This line lets the environment know the file is a shell script and the location of the shell.
+
+2) The name of your shell script must end with a *.sh*
+
+3) Before executing your script, you should make the script executable by using the following command:
+```{bash Executable, eval=FALSE}
+chmod ugo+x your_shell_script.sh
+```
+
+The demo script might look like:
+```{bash Whole script, eval=FALSE}
+#!/bin/bash
+
+# To make sure whether the current directory contrains the fastq files you want to analyze
+echo "***Are you sure that the current directory contains the fastq files you want to analyze? [y/n]***"
+read response
+if [ $response != y ]
+then
+  echo "***Exit now! Please move to the directory that contains the fastq files you want to analyze and re-run this script!***"
+  exit
+else
+  echo "***Now analysis will start with the fastq files in the current directory!***"
+fi
+
+# kallisto quantification
+
+```
+
