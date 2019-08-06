@@ -1,7 +1,7 @@
 ---
-title: "Automate analysis workflow"
+title: "Automating the analysis path from sequence reads to count matrix"
 author: "Coding club meet-up"
-date: "7/31/2019"
+date: "8/7/2019"
 output: html_document
 ---
 <style type="text/css">
@@ -37,17 +37,30 @@ pre { /* Code block - determines code spacing between lines */
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Question
+# Some shell scripting rules 
 
-Given that I have the following fastq files, I want to automate the alignment with kallisto. How to do?
+1) The first line in your script must be:
+```{bash First line, eval=FALSE}
+#!/bin/bash
+```
+This line lets the environment know the file is a shell script and the location of the shell.
 
--rw-r--r-- 1 lingzili Mandrup 576940227 Jul 17 09:57 SM4393_R1.fq.gz
+2) The name of your shell script must end with a *.sh*
 
--rw-r--r-- 1 lingzili Mandrup 596229266 Jul 17 09:57 SM4393_R2.fq.gz
+3) Before executing your script, you should make the script executable by using the following command:
+```{bash Executable, eval=FALSE}
+chmod +x your_shell_script.sh
+```
 
--rw-r--r-- 1 lingzili Mandrup 603128365 Jul 17 09:58 SM4394_R1.fq.gz
+4) To run the .sh file:
+```{bash run shell script, eval=FALSE}
+# Any of the following commands can work
+./your_shell_script.sh
 
--rw-r--r-- 1 lingzili Mandrup 627740583 Jul 17 09:58 SM4394_R2.fq.gz
+sh your_shell_script.sh
+
+bash your_shell_script.sh
+```
 
 # Important concepts
 
@@ -64,22 +77,64 @@ fq=SM4393_R1.fq.gz
 echo $fq
 ```
 
-**Basename**
+**basename**
 
 To ensure that all the output files from the workflow are properly named with sample IDs, we need to extract the “base name” (or sample ID) from the name of the input file.
 
-```{bash Basename, eval=FALSE}
+Example:
+```{bash basename, eval=FALSE}
+fq=SM4393_R1.fq.gz
+
 # Grab base of filename for naming outputs
 basename $fq _R1.fq.gz
 
 # This syntax is necessary for assigning the output of a command to a variable.
 id=`basename $fq _R1.fq.gz`
 
+# OR this also works
+id=$(basename $fq _R1.fq.gz)
+
 # Check the definition of the variable id
-echo "The sample ID is $id"
+echo $id
 ```
 
-# Solution #1: for loop
+**read**
+
+The read command is used to get a line of input into a variable.
+
+Example: **demo_read.sh**
+```{bash read, eval=FALSE}
+#!/bin/bash
+read -p "Please enter one word to describe today's weather: " response
+echo "The weather today is $response"
+
+echo "AGAIN: Please enter one word to describe today's weather: "
+read response
+echo "The weather today is $response"
+```
+
+**Positional parameters**
+
+Example: **demo_interactive.sh**
+```{bash positional parameters, eval=FALSE}
+#!/bin/bash
+# USAGE: bash demo_interactive.sh <1st_parameter> <2nd_parameter>
+
+echo "How many parameters this script is called with? $# parameters"
+echo "The script name is $0"
+echo "The first parameter is $1"
+echo "The second parameter is $2"
+echo "All parameters are $*"
+echo "AGAIN! All parameters are $@"
+```
+
+$# - Number of parameters specified in the command line.
+
+$0 - Name of the shell script being executed.
+
+$* or $@ - This denotes all the parameters passed to the script at the time of its execution.
+
+# for loop
 
 Syntax:
 ```{bash Syntax for loop, eval=FALSE}
@@ -89,7 +144,18 @@ execute commands
 done
 ```
 
-# Solution #2: while loop
+Example:
+```{bash example for loop, eval=FALSE}
+# Get stat from BAM files
+for bamFile in *_Aligned.sortedByCoord.out.bam
+do 
+  baseFilename=`basename $bamFile _Aligned.sortedByCoord.out.bam`
+  echo "***Now extract statistics from alignment of ${baseFilename}***"
+  samtools flagstat -@ 16 $bamFile >${baseFilename}.stat.txt
+done 
+```
+
+# while loop
 
 Syntax:
 ```{bash Syntax while loop, eval=FALSE}
@@ -99,39 +165,13 @@ execute commands
 done
 ```
 
-# Solution #3: write a shell script 
-
-**Some shell scripting rules**
-
-1) The first line in your script must be:
-```{bash First line, eval=FALSE}
-#!/bin/bash
+Example:
+```{bash example while loop, eval=FALSE}
+# Get stat from BAM files
+ls *_Aligned.sortedByCoord.out.bam | while read bamFile
+do 
+  baseFilename=`basename $bamFile _Aligned.sortedByCoord.out.bam`
+  echo "***Now extract statistics from alignment of ${baseFilename}***"
+  samtools flagstat -@ 16 $bamFile >${baseFilename}.stat.txt
+done
 ```
-This line lets the environment know the file is a shell script and the location of the shell.
-
-2) The name of your shell script must end with a *.sh*
-
-3) Before executing your script, you should make the script executable by using the following command:
-```{bash Executable, eval=FALSE}
-chmod ugo+x your_shell_script.sh
-```
-
-The demo script might look like:
-```{bash Whole script, eval=FALSE}
-#!/bin/bash
-
-# To make sure whether the current directory contrains the fastq files you want to analyze
-echo "***Are you sure that the current directory contains the fastq files you want to analyze? [y/n]***"
-read response
-if [ $response != y ]
-then
-  echo "***Exit now! Please move to the directory that contains the fastq files you want to analyze and re-run this script!***"
-  exit
-else
-  echo "***Now analysis will start with the fastq files in the current directory!***"
-fi
-
-# kallisto quantification
-
-```
-
