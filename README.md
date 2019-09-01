@@ -1,2 +1,2 @@
-# Step by step tutorials for analysing RNA-seq and ATAC-seq data
-# Will be updated as the project progresses
+# Teaching materials prepared for bi-weekly coding club
+Will be updated with each new session
