@@ -37,13 +37,6 @@ pre { /* Code block - determines code spacing between lines */
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
 
-```{r library, echo=TRUE, message=FALSE, warning=FALSE}
-library(tidyverse)
-library(knitr)
-library(sleuth)
-library(biomaRt)
-```
-
 # Introduction
 
 A companion to kallisto, sleuth is an interactive tool powered by Shiny to explore:
@@ -58,31 +51,42 @@ A companion to kallisto, sleuth is an interactive tool powered by Shiny to explo
 
 - PCA analysis
 
+# Theory
+
 sleuth computes differential expression using a statistical model that combines variance information from **biological replicates** and **bootstrapped technical replicates** to estimate true biological variance. 
 
 # Output from kallisto
 
 Instead of actual technical replicates, kallisto makes use of **bootstrapped values** which serve as accurate proxies. **Bootstrapping** here is the process of repeating the quantification analysis after resampling with replacement from the original data, in order to simulate random sampling associated with sequencing.
 
-```{r kallisto_output, echo=FALSE, eval=TRUE, fig.cap = "kallisto output documents", out.width = "400px"}
+```{r kallisto_output, echo=FALSE, eval=TRUE, fig.cap = "kallisto output documents", out.width = "350px"}
 knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/kallisto_output.png")
 ```
 
-```{r kallisto_count, echo=FALSE, eval=TRUE, fig.cap = "tsv file after 100 rounds of bootstrapping", out.width = "400px"}
+```{r kallisto_count, echo=FALSE, eval=TRUE, fig.cap = "tsv file after 100 rounds of bootstrapping", out.width = "450px"}
 knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/kallisto_count.png")
 ```
 
+```{r library, echo=TRUE, message=FALSE, warning=FALSE}
+# Load library
+library(tidyverse)
+library(knitr)
+library(sleuth)
+library(biomaRt)
+library(here)
+```
+
 ```{r load_count_table, echo=TRUE}
-# Define file paths for kallisto tsv files
+# Define file paths for kallisto directories
 sample_id <- c("SM5078", "SM5079", "SM5080", "SM5081", "SM5082", "SM5083")
 
 paths <- list(
-  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5078_S34.abundance.tsv",
-  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5079_S35.abundance.tsv",
-  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5080_S36.abundance.tsv",
-  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5081_S37.abundance.tsv",
-  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5082_S38.abundance.tsv",
-  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5083_S39.abundance.tsv"
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5078",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5079",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5080",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5081",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5082",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5083"
 )
 
 # Add sample names to file paths
@@ -121,26 +125,141 @@ head(t2g)
 
 # Create the sleuth object
 
+```{r sleuth_object, echo=TRUE, message=TRUE}
+so <- sleuth_prep(s2c, target_mapping = t2g, extra_bootstrap_summary = TRUE, read_bootstrap_tpm = TRUE)
+```
 
+```{r pca_n_density, echo=TRUE}
+# Define standard plot themne
+standard_theme <- theme(
+  axis.line = element_line(colour = "black"),
+  axis.text.x = element_text(color = "black", size = 16, face = "bold"),
+  axis.text.y = element_text(color = "black", size = 16, face = "bold"),
+  axis.title.x = element_text(color = "black", size = 18, face = "bold"),
+  axis.title.y = element_text(color = "black", size = 18, face = "bold"),
+  legend.title = element_blank(),
+  legend.text = element_text(color = "black", size = 18, face = "bold"),
+  legend.key = element_rect(fill = "white"), # Remove grey background of the legend
+  strip.text.x = element_blank(),
+  strip.background = element_rect(fill = "white"),
+  panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+  panel.background = element_blank(),
+  panel.border = element_rect(colour = "black", fill = NA, size = 2),
+  plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"),
+  plot.title = element_text(color = "black", size = 20, face = "bold")
+)
 
+# Calculate PC variance
+pc_variance <- plot_pc_variance(so)
 
+list_variance <- pc_variance$data$var
 
+# PCA plot
+pca_p1 <- plot_pca(so, color_by = "condition", text_labels = FALSE, point_size = 5)
 
+pca_p2 <- pca_p1 + 
+  standard_theme +
+  xlab(paste0("PC1: ", format(round(list_variance[1], 2), nsmall = 2), "% variance")) +
+  ylab(paste0("PC2: ", format(round(list_variance[2], 2), nsmall = 2), "% variance")) +
+  xlim(-4e+06, 4e+06) +
+  ylim(-5e+05, 5e+05)
 
+pca_p2
 
+# Plot group density
+plot_group_density(so, use_filtered = TRUE, trans = "log", grouping = "condition", offset = 1) + 
+  standard_theme + 
+  theme(legend.position = "top")  
 
+```
+
+# DE analysis
+
+```{r DE_analysis, echo=TRUE, message=TRUE}
+# First fit a full model that includes a paramter for the condition
+so <- sleuth_fit(so, ~condition, 'full')
+
+# Then fit a reduced model that only includes the intercept
+so <- sleuth_fit(so, ~1, 'reduced')
+
+# For each transcript, we perform a likelihood ratio test to determine whether the full model fits the data significantly better than the reduced model. Significantly better fit is indicative of differential expression.
+so <- sleuth_lrt(so, 'reduced', 'full')
+
+# Make a table of the results
+sleuth_table <- sleuth_results(so, 'reduced:full', 'lrt', show_all = FALSE)
+
+# Make a table that only includes the significantly DE transcripts
+sleuth_significant <- dplyr::filter(sleuth_table, qval <= 0.05)
+
+```
+
+```{r DE_plots, echo=TRUE}
+# Top 20 most significant DE transcripts in table and heatmap
+head(sleuth_significant, 20) %>%
+  dplyr::select(ext_gene, ens_gene, target_id, qval)
+
+plot_transcript_heatmap(so, head(sleuth_significant, 20)$target_id, 'est_counts')
+
+# Define standard plot themne
+standard_theme <- theme(
+  axis.line = element_line(colour = "black"),
+  axis.text.x = element_text(color = "black", size = 16, face = "bold"),
+  axis.text.y = element_text(color = "black", size = 16, face = "bold"),
+  axis.title.x = element_text(color = "black", size = 18, face = "bold"),
+  axis.title.y = element_text(color = "black", size = 18, face = "bold"),
+  legend.title = element_blank(),
+  legend.text = element_text(color = "black", size = 18, face = "bold"),
+  legend.key = element_rect(fill = "white"), # Remove grey background of the legend
+  strip.text.x = element_blank(),
+  strip.background = element_rect(fill = "white"),
+  panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+  panel.background = element_blank(),
+  panel.border = element_rect(colour = "black", fill = NA, size = 2),
+  plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"),
+  plot.title = element_text(color = "black", size = 20, face = "bold")
+)
+
+# Plot variation in units of estimated counts
+## Transcript: Ins1-201
+Ins1_p1 <- plot_bootstrap(so, "ENSMUST00000039652.5", units = "est_counts")
+
+Ins1_p2 <- Ins1_p1 + 
+  standard_theme +
+  labs(title = "Ins1-201", x = NULL, y = "Estimated counts") +
+  ylim(-5, 15)
+
+Ins1_p2
+
+## Transcript: Mki67-201
+Ki67_p1 <- plot_bootstrap(so, "ENSMUST00000033310.8", units = "est_counts")
+
+Ki67_p2 <- Ki67_p1 + 
+  standard_theme +
+  labs(title = "Mki67-201", x = NULL, y = "Estimated counts")
+
+Ki67_p2
+
+## Transcript: Rorc-201
+Rorc_p1 <- plot_bootstrap(so, "ENSMUST00000029795.9", units = "est_counts")
+
+Rorc_p2 <- Rorc_p1 +
+  standard_theme +
+  labs(title = "Rorc-201", x = NULL, y = "Estimated counts")
+
+Rorc_p2
+```
+
+# Interactive analysis
+
+Sleuth live gives you an interactive visualization powered by Shiny.
+
+```{r sleuth_live, eval=FALSE}
+sleuth_live(so)
+```
 
 # Reference
 
 sleuth, Pachter Lab <https://pachterlab.github.io/sleuth/>
 
-https://github.com/griffithlab/rnaseq_tutorial/wiki/Kallisto
-
-https://github.com/dwheelerau/kallisto_sleuth/blob/master/slueth.R
-
-https://informatics.fas.harvard.edu/workshops/HarvardInformatics_DEworkshop_Spring2018.html
-
-https://github.com/pimentel/bears_iplant
-
-http://www.nxn.se/valent/timecourse-analysis-with-sleuth
+Differential Expression Workshop: March 2018 <https://informatics.fas.harvard.edu/workshops/HarvardInformatics_DEworkshop_Spring2018.html>
 
