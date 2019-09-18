@@ -1,10 +1,146 @@
 ---
-title: "sleuth walkthrough"
-author: "LLi"
-date: "8/7/2019"
+title: "Coding club meet-up - sleuth walkthrough"
+author: "Lingzi Li"
+date: "20/09/2019"
 output: html_document
 ---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 16px;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 28px;
+}
+h1 { /* Header 1 */
+  font-size: 24px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 20px;
+}
+h3 { /* Header 3 */
+    font-size: 18px;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 ```
+
+```{r library, echo=TRUE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(knitr)
+library(sleuth)
+library(biomaRt)
+```
+
+# Introduction
+
+A companion to kallisto, sleuth is an interactive tool powered by Shiny to explore:
+
+- scatterplots
+
+- volcano plots
+
+- MA plots
+
+- heat maps
+
+- PCA analysis
+
+sleuth computes differential expression using a statistical model that combines variance information from **biological replicates** and **bootstrapped technical replicates** to estimate true biological variance. 
+
+# Output from kallisto
+
+Instead of actual technical replicates, kallisto makes use of **bootstrapped values** which serve as accurate proxies. **Bootstrapping** here is the process of repeating the quantification analysis after resampling with replacement from the original data, in order to simulate random sampling associated with sequencing.
+
+```{r kallisto_output, echo=FALSE, eval=TRUE, fig.cap = "kallisto output documents", out.width = "400px"}
+knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/kallisto_output.png")
+```
+
+```{r kallisto_count, echo=FALSE, eval=TRUE, fig.cap = "tsv file after 100 rounds of bootstrapping", out.width = "400px"}
+knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/kallisto_count.png")
+```
+
+```{r load_count_table, echo=TRUE}
+# Define file paths for kallisto tsv files
+sample_id <- c("SM5078", "SM5079", "SM5080", "SM5081", "SM5082", "SM5083")
+
+paths <- list(
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5078_S34.abundance.tsv",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5079_S35.abundance.tsv",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5080_S36.abundance.tsv",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5081_S37.abundance.tsv",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5082_S38.abundance.tsv",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/kallisto_5083_S39.abundance.tsv"
+)
+
+# Add sample names to file paths
+names(paths) <- sample_id
+```
+
+# Experimental design table
+
+Note: At least one column needs to be labeled '**sample**'
+
+```{r sample_info, echo=TRUE}
+# Load experimental design
+s2c <- read.csv("~/seq_tutorials/data/kallisto/sample_info.csv")
+
+# Add file path to experimental design
+s2c <- mutate(s2c, path = paths)
+s2c[] <- lapply(s2c, as.character)
+
+s2c
+```
+
+# Get mouse gene names (GRCm38.p6)
+
+Since the gene names are not automatically in the annotation of kallisto, we can get them from biomaRt.
+
+```{r gene_name, echo=TRUE}
+# Load mouse gene names from Ensembl
+mart <- biomaRt::useMart("ensembl", dataset = "mmusculus_gene_ensembl")
+t2g <- biomaRt::getBM(attributes = c("ensembl_transcript_id", "ensembl_gene_id", "external_gene_name"), mart = mart)
+
+# Rename the columns
+t2g <- dplyr::rename(t2g, target_id = ensembl_transcript_id, ens_gene = ensembl_gene_id, ext_gene = external_gene_name)
+
+head(t2g)
+```
+
+# Create the sleuth object
+
+
+
+
+
+
+
+
+
+
+# Reference
+
+sleuth, Pachter Lab <https://pachterlab.github.io/sleuth/>
+
+https://github.com/griffithlab/rnaseq_tutorial/wiki/Kallisto
+
+https://github.com/dwheelerau/kallisto_sleuth/blob/master/slueth.R
+
+https://informatics.fas.harvard.edu/workshops/HarvardInformatics_DEworkshop_Spring2018.html
+
+https://github.com/pimentel/bears_iplant
+
+http://www.nxn.se/valent/timecourse-analysis-with-sleuth
+
