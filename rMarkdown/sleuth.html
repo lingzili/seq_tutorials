@@ -572,9 +572,8 @@ so &lt;- sleuth_lrt(so, &#39;reduced&#39;, &#39;full&#39;)
 sleuth_table &lt;- sleuth_results(so, &#39;reduced:full&#39;, &#39;lrt&#39;, show_all = FALSE)
 
 # Make a table that only includes the significantly DE transcripts
-sleuth_significant &lt;- dplyr::filter(sleuth_table, qval &lt;= 0.05)
-
-# Top 20 most significant DE transcripts
+sleuth_significant &lt;- dplyr::filter(sleuth_table, qval &lt;= 0.05)</code></pre>
+<pre class="r"><code># Top 20 most significant DE transcripts in table and heatmap
 head(sleuth_significant, 20) %&gt;%
   dplyr::select(ext_gene, ens_gene, target_id, qval)</code></pre>
 <pre><code>##    ext_gene           ens_gene             target_id        qval
@@ -599,6 +598,25 @@ head(sleuth_significant, 20) %&gt;%
 ## 19     Rpl6 ENSMUSG00000029614 ENSMUST00000031617.12 0.001430032
 ## 20    Erp27 ENSMUSG00000030219  ENSMUST00000032343.6 0.001430032</code></pre>
 <pre class="r"><code>plot_transcript_heatmap(so, head(sleuth_significant, 20)$target_id, &#39;est_counts&#39;)
+
+# Define standard plot themne
+standard_theme &lt;- theme(
+  axis.line = element_line(colour = &quot;black&quot;),
+  axis.text.x = element_text(color = &quot;black&quot;, size = 16, face = &quot;bold&quot;),
+  axis.text.y = element_text(color = &quot;black&quot;, size = 16, face = &quot;bold&quot;),
+  axis.title.x = element_text(color = &quot;black&quot;, size = 18, face = &quot;bold&quot;),
+  axis.title.y = element_text(color = &quot;black&quot;, size = 18, face = &quot;bold&quot;),
+  legend.title = element_blank(),
+  legend.text = element_text(color = &quot;black&quot;, size = 18, face = &quot;bold&quot;),
+  legend.key = element_rect(fill = &quot;white&quot;), # Remove grey background of the legend
+  strip.text.x = element_blank(),
+  strip.background = element_rect(fill = &quot;white&quot;),
+  panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+  panel.background = element_blank(),
+  panel.border = element_rect(colour = &quot;black&quot;, fill = NA, size = 2),
+  plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), &quot;cm&quot;),
+  plot.title = element_text(color = &quot;black&quot;, size = 20, face = &quot;bold&quot;)
+)
 
 # Plot variation in units of estimated counts
 ## Transcript: Ins1-201
