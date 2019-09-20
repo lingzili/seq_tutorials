@@ -41,13 +41,9 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 sleuth computes differential expression using a statistical model that combines variance information from **biological replicates** and **bootstrapped technical replicates** to estimate true biological variance. 
 
-https://liorpachter.wordpress.com/2015/08/17/a-sleuth-for-rna-seq/
-
-https://www.nature.com/articles/nmeth.4324
-
 # Output from kallisto
 
-```{bash kallisto_command, eval=FALSE, include=FALSE}
+```{bash kallisto_command, eval=FALSE}
 #!/bin/bash
 vds2Dir=/data/home/lingzili/VDS2/NGS_Runs/190807_A00316_0089_AHCM7JDRXX/Data/Intensities/BaseCalls/Demultiplex/LL_SM
 
@@ -78,6 +74,13 @@ knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/kallisto
 knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/kallisto_count.png")
 ```
 
+**Effective length** is an effective length with respect to each possible fragment that maps to it. It accounts for the fact that not every transcript in the population can produce a fragment of every length starting at every position.
+
+**Estimated counts** refers to the number of reads after dividing the mass of each read based on the likelihood.
+
+**Transcripts per million (TPM)** is a measurement of the proportion of transcripts in your pool of RNA. Shouldn’t compare TPM across experiments.
+
+# Libraries
 ```{r library, echo=TRUE, message=FALSE, warning=FALSE}
 # Load library
 library(tidyverse)
@@ -86,6 +89,8 @@ library(sleuth)
 library(biomaRt)
 library(here)
 ```
+
+# Experimental design table
 
 ```{r load_count_table, echo=TRUE}
 # Define file paths for kallisto directories
@@ -104,10 +109,7 @@ paths <- list(
 names(paths) <- sample_id
 ```
 
-# Experimental design table
-
 Note: At least one column needs to be labeled '**sample**'
-
 ```{r sample_info, echo=TRUE}
 # Load experimental design
 s2c <- read.csv("~/seq_tutorials/data/kallisto/sample_info.csv")
@@ -134,11 +136,13 @@ t2g <- dplyr::rename(t2g, target_id = ensembl_transcript_id, ens_gene = ensembl_
 head(t2g)
 ```
 
-# Create the sleuth object
+# Create the sleuth object (so)
 
 ```{r sleuth_object, echo=TRUE, message=TRUE}
 so <- sleuth_prep(s2c, target_mapping = t2g, extra_bootstrap_summary = TRUE, read_bootstrap_tpm = TRUE)
 ```
+
+# PCA and group density
 
 ```{r pca_n_density, echo=TRUE}
 # Define standard plot themne
@@ -185,6 +189,12 @@ plot_group_density(so, use_filtered = TRUE, trans = "log", grouping = "condition
 
 # DE analysis
 
+Briefly, the likelihood ratio test (lrt) models the likelihood of the data given 2 models:
+
+**full**: transcript abundance affected on one or more dependent variables (here just being treated or not)
+
+**reduced**: transcript abundance unaffected by the treatment (null hypothesis)
+
 ```{r DE_analysis, echo=TRUE, message=TRUE}
 # First fit a full model that includes a paramter for the condition
 so <- sleuth_fit(so, ~condition, "full")
@@ -208,13 +218,19 @@ write.table(subset(sleuth_table, qval <= 0.05), file = "sleuth.DE_transcripts.qv
 sleuth_significant <- dplyr::filter(sleuth_table, qval <= 0.05)
 ```
 
-```{r DE_plots, echo=TRUE}
+```{r DE_plots, echo=TRUE, fig.height=5, fig.width=5}
 # Top 20 most significant DE transcripts in table and heatmap
 head(sleuth_significant, 20) %>%
   dplyr::select(ext_gene, ens_gene, target_id, qval)
+```
 
+# Heatmap
+
+```{r heatmap, echo=TRUE}
 plot_transcript_heatmap(so, head(sleuth_significant, 20)$target_id, "est_counts")
 ```
+
+# Boxplot with gene expression counts 
 
 ```{r boxplot, echo=TRUE}
 # Define standard plot themne
@@ -266,20 +282,25 @@ Rorc_p2 <- Rorc_p1 +
 Rorc_p2
 ```
 
-```{r}
-# The	likelihood	ratio	test "lrt" does	not	give	a	fold	change	for	the	transcript,	just	whether	it	is	differentially	expressed	or	not.
-# Sleuth	provides	another	test	called	Wald	test,	which	returns	a	‘b’	value	that “it	is	analogous	to,	but	not	equivalent to,	the	foldchange.”
+The	likelihood	ratio	test (lrt) does	not	give	a	fold	change	for	the	transcript,	just	whether	it	is	differentially	expressed	or	not. 
+
+Sleuth	provides	another	test	called	**Wald	test**,	which	returns	a	**beta	value**	that “it	is	analogous	to,	but	not	equivalent to,	the	foldchange”. Sleuth will transform elements in the condition field to 0s and 1s in alphabetical order. Positive beta values showing transcripts in which expression is greater in condition 1 than in condition 0. 
+
+```{r sleuth_wt, echo=TRUE}
+# Wald	test (wt) returns	a	beta	value	that “it	is	analogous	to,	but	not	equivalent to, the	foldchange.”
 so <- sleuth_wt(so, "conditionHFD")
 
 sleuth_table <- sleuth_results(so, "conditionHFD", "wt", show_all = FALSE)
 ```
 
+# MA plot and volcano plot
+
 ```{r ma_plots, echo=TRUE}
-plot_ma(so, "conditionHFD", test_type = "wt", which_model = "full", sig_level = 0.01, point_alpha = 0.2, sig_color = "red", highlight = NULL, highlight_color = "green")
+plot_ma(so, "conditionHFD", test_type = "wt", which_model = "full", sig_level = 0.01, point_alpha = 0.2, sig_color = "red", highlight = NULL, highlight_color = "green") + standard_theme + labs(y = "beta value (HFD vs. chow)")
 ```
 
 ```{r volcano_plot, echo=TRUE}
-plot_volcano(so, "conditionHFD", test_type = "wt", which_model = "full", sig_level = 0.01, point_alpha = 0.2, sig_color = "red", highlight = NULL)
+plot_volcano(so, "conditionHFD", test_type = "wt", which_model = "full", sig_level = 0.01, point_alpha = 0.2, sig_color = "red", highlight = NULL) + standard_theme + labs(x = "beta value")
 ```
 
 # Interactive analysis
@@ -297,4 +318,3 @@ sleuth, Pachter Lab <https://pachterlab.github.io/sleuth/>
 Differential Expression Workshop: March 2018 <https://informatics.fas.harvard.edu/workshops/HarvardInformatics_DEworkshop_Spring2018.html>
 
 Pimentel,	H.,	N.L.Bray,	S.Puente,	P.Melsted	and	L.Pachter	(2017).	"Differential	analysis	of	RNA-seq	incorporating	quantification	uncertainty."	Nature	Methods	14:	687. <https://www.nature.com/articles/nmeth.4324>
-
