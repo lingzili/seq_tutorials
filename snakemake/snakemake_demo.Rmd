@@ -1,0 +1,30 @@
+---
+title: 'Coding club meet-up: snakemake walkthrough'
+author: "Lingzi Li"
+date: "Currently in prepration"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Introduction
+
+Snakemake is a Python based language and execution environment for GNU Make-like workflows.
+
+# Installation
+
+Below is the recommendated way to install Snakemake by Miniconda Python3 distribution. For other installation methods, please see: https://snakemake.readthedocs.io/en/stable/getting_started/installation.html
+
+```{bash, eval=FALSE}
+# Make sure you have Python 3
+python --version
+
+# Use Miniconda Python3 to install Snakemake
+conda install -c bioconda -c conda-forge snakemake
+```
+
+# References
+
+Snakemake <https://snakemake.readthedocs.io/en/stable/index.html>
