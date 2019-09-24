@@ -8,6 +8,8 @@
 | September 20 2019 | [sleuth walkthrough](https://github.com/lingzili/seq_tutorials/tree/master/sleuth) |
 
 Extra:
+
 [Multiple ways to download public sequencing data](https://github.com/lingzili/seq_tutorials/tree/master/publicDataDownload)
+
 [How to upgrade R on Windows](https://github.com/lingzili/seq_tutorials/tree/master/updateR)
 
