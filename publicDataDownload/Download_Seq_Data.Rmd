@@ -1,13 +1,8 @@
 ---
 title: "Multiple ways to download public sequencing data"
-author: "LL"
+author: "Lingzi Li"
 date: "April 27, 2019"
-output: 
-  html_document: 
-    theme: simplex
-  pdf_document:
-    fig_caption: yes
-    keep_tex: yes
+output: pdf_document
 ---
 
 # Option 1: Direct download of fastq files

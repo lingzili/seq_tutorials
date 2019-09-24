@@ -1,0 +1,322 @@
+---
+title: "Coding club meet-up - sleuth walkthrough"
+author: "Lingzi Li"
+date: "20/09/2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 16px;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 28px;
+}
+h1 { /* Header 1 */
+  font-size: 24px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 20px;
+}
+h3 { /* Header 3 */
+    font-size: 18px;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Introduction
+
+sleuth computes differential expression using a statistical model that combines variance information from **biological replicates** and **bootstrapped technical replicates** to estimate true biological variance. 
+
+# Output from kallisto
+
+```{bash kallisto_command, eval=FALSE}
+#!/bin/bash
+vds2Dir=/data/home/lingzili/VDS2/NGS_Runs/190807_A00316_0089_AHCM7JDRXX/Data/Intensities/BaseCalls/Demultiplex/LL_SM
+
+# Align pair-end reads with kallisto index from mouse GRCm38.p6 cDNA, bootstrapping 100 times
+ls ${vds2Dir} | cut -d"_" -f 1,2 | sort -u | while read id
+do 
+echo "***The sample ID is $id***"
+read1=${vds2Dir}/${id}_R1_001.fastq.gz
+read2=${vds2Dir}/${id}_R2_001.fastq.gz
+echo "***Read 1 is ${read1} and read 2 is ${read2}***"
+kallisto quant -t 16 \
+-i /data/home/lingzili/mm10_genome/Mus_musculus/UCSC/GRCm38_kallisto/GRCm38.cdna.all.idx \
+--gtf /data/home/lingzili/mm10_genome/Mus_musculus/UCSC/GRCm38_kallisto/Mus_musculus.GRCm38.96.gtf.gz \
+-o kallisto_${id} \
+-b 100 \
+$read1 $read2
+echo "***${id} is done.***"
+done
+```
+
+Instead of actual technical replicates, kallisto makes use of **bootstrapped values** which serve as accurate proxies. **Bootstrapping** here is the process of repeating the quantification analysis after resampling with replacement from the original data, in order to simulate random sampling associated with sequencing.
+
+```{r kallisto_output, echo=FALSE, eval=TRUE, fig.cap = "kallisto output documents", out.width = "350px"}
+knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/kallisto_output.png")
+```
+
+```{r kallisto_count, echo=FALSE, eval=TRUE, fig.cap = "tsv file after 100 rounds of bootstrapping", out.width = "450px"}
+knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/plot/kallisto_count.png")
+```
+
+**Effective length** is an effective length with respect to each possible fragment that maps to it. It accounts for the fact that not every transcript in the population can produce a fragment of every length starting at every position.
+
+**Estimated counts** refers to the number of reads after dividing the mass of each read based on the likelihood.
+
+**Transcripts per million (TPM)** is a measurement of the proportion of transcripts in your pool of RNA. Shouldn’t compare TPM across experiments.
+
+# Libraries
+```{r library, echo=TRUE, message=FALSE, warning=FALSE}
+# Load library
+library(tidyverse)
+library(knitr)
+library(sleuth)
+library(biomaRt)
+library(here)
+```
+
+# Experimental design table
+
+```{r load_count_table, echo=TRUE}
+# Define file paths for kallisto directories
+sample_id <- c("SM5078", "SM5079", "SM5080", "SM5081", "SM5082", "SM5083")
+
+paths <- list(
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5078",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5079",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5080",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5081",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5082",
+  "C:/Users/lingzili/Documents/seq_tutorials/data/kallisto/SM5083"
+)
+
+# Add sample names to file paths
+names(paths) <- sample_id
+```
+
+Note: At least one column needs to be labeled '**sample**'
+```{r sample_info, echo=TRUE}
+# Load experimental design
+s2c <- read.csv("~/seq_tutorials/data/kallisto/sample_info.csv")
+
+# Add file path to experimental design
+s2c <- mutate(s2c, path = paths)
+s2c[] <- lapply(s2c, as.character)
+
+s2c
+```
+
+# Get mouse gene names (GRCm38.p6)
+
+Since the gene names are not automatically in the annotation of kallisto, we can get them from biomaRt.
+
+```{r gene_name, echo=TRUE}
+# Load mouse gene names from Ensembl
+mart <- biomaRt::useMart("ensembl", dataset = "mmusculus_gene_ensembl")
+t2g <- biomaRt::getBM(attributes = c("ensembl_transcript_id", "ensembl_gene_id", "external_gene_name"), mart = mart)
+
+# Rename the columns
+t2g <- dplyr::rename(t2g, target_id = ensembl_transcript_id, ens_gene = ensembl_gene_id, ext_gene = external_gene_name)
+
+head(t2g)
+```
+
+# Create the sleuth object (so)
+
+```{r sleuth_object, echo=TRUE, message=TRUE}
+so <- sleuth_prep(s2c, target_mapping = t2g, extra_bootstrap_summary = TRUE, read_bootstrap_tpm = TRUE)
+```
+
+# PCA and group density
+
+```{r pca_n_density, echo=TRUE}
+# Define standard plot themne
+standard_theme <- theme(
+  axis.line = element_line(colour = "black"),
+  axis.text.x = element_text(color = "black", size = 16, face = "bold"),
+  axis.text.y = element_text(color = "black", size = 16, face = "bold"),
+  axis.title.x = element_text(color = "black", size = 18, face = "bold"),
+  axis.title.y = element_text(color = "black", size = 18, face = "bold"),
+  legend.title = element_blank(),
+  legend.text = element_text(color = "black", size = 18, face = "bold"),
+  legend.key = element_rect(fill = "white"), # Remove grey background of the legend
+  strip.text.x = element_blank(),
+  strip.background = element_rect(fill = "white"),
+  panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+  panel.background = element_blank(),
+  panel.border = element_rect(colour = "black", fill = NA, size = 2),
+  plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"),
+  plot.title = element_text(color = "black", size = 20, face = "bold")
+)
+
+# Calculate PC variance
+pc_variance <- plot_pc_variance(so)
+
+list_variance <- pc_variance$data$var
+
+# PCA plot
+pca_p1 <- plot_pca(so, color_by = "condition", text_labels = FALSE, point_size = 5)
+
+pca_p2 <- pca_p1 +
+  standard_theme +
+  xlab(paste0("PC1: ", format(round(list_variance[1], 2), nsmall = 2), "% variance")) +
+  ylab(paste0("PC2: ", format(round(list_variance[2], 2), nsmall = 2), "% variance")) +
+  xlim(-4e+06, 4e+06) +
+  ylim(-5e+05, 5e+05)
+
+pca_p2
+
+# Plot group density
+plot_group_density(so, use_filtered = TRUE, trans = "log", grouping = "condition", offset = 1) +
+  standard_theme +
+  theme(legend.position = "top")
+```
+
+# DE analysis
+
+Briefly, the likelihood ratio test (lrt) models the likelihood of the data given 2 models:
+
+**full**: transcript abundance affected on one or more dependent variables (here just being treated or not)
+
+**reduced**: transcript abundance unaffected by the treatment (null hypothesis)
+
+```{r DE_analysis, echo=TRUE, message=TRUE}
+# First fit a full model that includes a paramter for the condition
+so <- sleuth_fit(so, ~condition, "full")
+
+# Then fit a reduced model that only includes the intercept
+so <- sleuth_fit(so, ~1, "reduced")
+
+# For each transcript, we perform a likelihood ratio test to determine whether the full model fits the data significantly better than the reduced model. Significantly better fit is indicative of differential expression.
+so <- sleuth_lrt(so, "reduced", "full")
+
+# Make a table of the results
+sleuth_table <- sleuth_results(so, "reduced:full", "lrt", show_all = FALSE)
+
+# To check how many transcripts are differentially expressed between the two conditions (q-value <= 0.05)
+table(sleuth_table$qval <= 0.05)
+
+# Save the results
+write.table(subset(sleuth_table, qval <= 0.05), file = "sleuth.DE_transcripts.qval_0.05.txt", sep = "\t", row.names = F, quote = F)
+
+# Make a table that only includes the significantly DE transcripts
+sleuth_significant <- dplyr::filter(sleuth_table, qval <= 0.05)
+```
+
+```{r DE_plots, echo=TRUE, fig.height=5, fig.width=5}
+# Top 20 most significant DE transcripts in table and heatmap
+head(sleuth_significant, 20) %>%
+  dplyr::select(ext_gene, ens_gene, target_id, qval)
+```
+
+# Heatmap
+
+```{r heatmap, echo=TRUE}
+plot_transcript_heatmap(so, head(sleuth_significant, 20)$target_id, "est_counts")
+```
+
+# Boxplot with gene expression counts 
+
+```{r boxplot, echo=TRUE}
+# Define standard plot themne
+standard_theme <- theme(
+  axis.line = element_line(colour = "black"),
+  axis.text.x = element_text(color = "black", size = 16, face = "bold"),
+  axis.text.y = element_text(color = "black", size = 16, face = "bold"),
+  axis.title.x = element_text(color = "black", size = 18, face = "bold"),
+  axis.title.y = element_text(color = "black", size = 18, face = "bold"),
+  legend.title = element_blank(),
+  legend.text = element_text(color = "black", size = 18, face = "bold"),
+  legend.key = element_rect(fill = "white"), # Remove grey background of the legend
+  strip.text.x = element_blank(),
+  strip.background = element_rect(fill = "white"),
+  panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+  panel.background = element_blank(),
+  panel.border = element_rect(colour = "black", fill = NA, size = 2),
+  plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"),
+  plot.title = element_text(color = "black", size = 20, face = "bold")
+)
+
+# Plot variation in units of estimated counts
+## Transcript: Ins1-201
+Ins1_p1 <- plot_bootstrap(so, "ENSMUST00000039652.5", units = "est_counts")
+
+Ins1_p2 <- Ins1_p1 +
+  standard_theme +
+  labs(title = "Ins1-201", x = NULL, y = "Estimated counts") +
+  ylim(-5, 15)
+
+Ins1_p2
+
+## Transcript: Mki67-201
+Ki67_p1 <- plot_bootstrap(so, "ENSMUST00000033310.8", units = "est_counts")
+
+Ki67_p2 <- Ki67_p1 +
+  standard_theme +
+  labs(title = "Mki67-201", x = NULL, y = "Estimated counts")
+
+Ki67_p2
+
+## Transcript: Rorc-201
+Rorc_p1 <- plot_bootstrap(so, "ENSMUST00000029795.9", units = "est_counts")
+
+Rorc_p2 <- Rorc_p1 +
+  standard_theme +
+  labs(title = "Rorc-201", x = NULL, y = "Estimated counts")
+
+Rorc_p2
+```
+
+The	likelihood	ratio	test (lrt) does	not	give	a	fold	change	for	the	transcript,	just	whether	it	is	differentially	expressed	or	not. 
+
+Sleuth	provides	another	test	called	**Wald	test**,	which	returns	a	**beta	value**	that “it	is	analogous	to,	but	not	equivalent to,	the	foldchange”. Sleuth will transform elements in the condition field to 0s and 1s in alphabetical order. Positive beta values showing transcripts in which expression is greater in condition 1 than in condition 0. 
+
+```{r sleuth_wt, echo=TRUE}
+# Wald	test (wt) returns	a	beta	value	that “it	is	analogous	to,	but	not	equivalent to, the	foldchange.”
+so <- sleuth_wt(so, "conditionHFD")
+
+sleuth_table <- sleuth_results(so, "conditionHFD", "wt", show_all = FALSE)
+```
+
+# MA plot and volcano plot
+
+```{r ma_plots, echo=TRUE}
+plot_ma(so, "conditionHFD", test_type = "wt", which_model = "full", sig_level = 0.01, point_alpha = 0.2, sig_color = "red", highlight = NULL, highlight_color = "green") + standard_theme + labs(y = "beta value (HFD vs. chow)")
+```
+
+```{r volcano_plot, echo=TRUE}
+plot_volcano(so, "conditionHFD", test_type = "wt", which_model = "full", sig_level = 0.01, point_alpha = 0.2, sig_color = "red", highlight = NULL) + standard_theme + labs(x = "beta value")
+```
+
+# Interactive analysis
+
+Sleuth live gives you an interactive visualization powered by Shiny.
+
+```{r sleuth_live, eval=FALSE}
+sleuth_live(so)
+```
+
+# Reference
+
+sleuth, Pachter Lab <https://pachterlab.github.io/sleuth/>
+
+Differential Expression Workshop: March 2018 <https://informatics.fas.harvard.edu/workshops/HarvardInformatics_DEworkshop_Spring2018.html>
+
+Pimentel,	H.,	N.L.Bray,	S.Puente,	P.Melsted	and	L.Pachter	(2017).	"Differential	analysis	of	RNA-seq	incorporating	quantification	uncertainty."	Nature	Methods	14:	687. <https://www.nature.com/articles/nmeth.4324>
