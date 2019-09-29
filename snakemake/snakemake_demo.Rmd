@@ -4,6 +4,34 @@ author: "Lingzi Li"
 date: "Currently in prepration"
 output: html_document
 ---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 16px;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 28px;
+}
+h1 { /* Header 1 */
+  font-size: 24px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 20px;
+}
+h3 { /* Header 3 */
+    font-size: 18px;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
@@ -13,6 +41,54 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 Snakemake is a Python based language and execution environment for GNU Make-like workflows.
 
+**Advantages**
+
+* Document paramters, tools, versions from raw data to final figure
+
+* Execute without manual intervention
+
+* Parallelization
+
+**Define workflows in terms of rules**
+
+```{r dependency, echo=FALSE, eval=TRUE, out.width = "550px"}
+knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/snakemake/graph/dependency.png")
+```
+
+* The rule below was given a name *quantify*
+
+* Directives: *input*, *output*, *params*, *threads*, *resources*, *run*
+
+* Refering to rule elements: *{input.index}*, *{params.outdir}*, *{input.fq1}*, *{input.fq2}*
+
+* Wildcard (here as {sample}) is specified in both input and output
+
+```{r rule, echo=FALSE, eval=TRUE, out.width = "550px"}
+knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/snakemake/graph/rule.png")
+```
+
+* Extra note: each rule can specify a log file where information about the execution is written to
+
+**To execute snakemake**
+
+```{bash execute, eval=FALSE}
+# Check available CPU cores
+lscpu
+
+# To execute workflows in Snakefile in the current working directory
+snakemake -j {number of CPU cores allocated to this workflow}
+
+# Dry run: to test if the workflow is defined properly by only displaying what would be done without actual execution
+snakemake -n
+
+# To view what is going on:
+## -r: print the reason for each executed rule
+snakemake -r
+## -p: print out the shell commands that will be executed
+snakemake -p
+## --dag: do not execute anything and print the directed acyclic graph of jobs in the dot language
+snakemake --dag
+```
 # Installation
 
 Below is the recommendated way to install Snakemake by Miniconda Python3 distribution. For other installation methods, please see: https://snakemake.readthedocs.io/en/stable/getting_started/installation.html
@@ -25,6 +101,14 @@ python --version
 conda install -c bioconda -c conda-forge snakemake
 ```
 
+# Parallelism
+
+Rules claiming more threads will be scaled down. When Snakemake doesn’t have enough cores to run a rule (as defined by {threads}), Snakemake will run that rule with the maximum available number of cores as defined by snakemake -j.
+
 # References
 
 Snakemake <https://snakemake.readthedocs.io/en/stable/index.html>
+
+Snakemake—a scalable bioinformatics workflow engine <https://academic.oup.com/bioinformatics/article/28/19/2520/290322>
+
+Analysis pipelines with Python <https://hpc-carpentry.github.io/hpc-python/>
