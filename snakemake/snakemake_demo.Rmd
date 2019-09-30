@@ -57,7 +57,9 @@ knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/snakemake/gra
 
 * The rule below was given a name *quantify*
 
-* Directives: *input*, *output*, *params*, *threads*, *resources*, *run*
+* Directives: *input*, *output*, *params*, *threads*, *resources*, *shell* 
+
+To run R or Python, use *script*
 
 * Refering to rule elements: *{input.index}*, *{params.outdir}*, *{input.fq1}*, *{input.fq2}*
 
@@ -71,15 +73,16 @@ knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/snakemake/gra
 
 **To execute snakemake**
 
+You need to tell Snakemake what files (**targets**) to create. Snakemake will figure out how to create them by using dependency graph generated from the rules.
+
 ```{bash execute, eval=FALSE}
 # Check available CPU cores
 lscpu
 
-# To execute workflows in Snakefile in the current working directory
-snakemake -j {number of CPU cores allocated to this workflow}
-
 # Dry run: to test if the workflow is defined properly by only displaying what would be done without actual execution
-snakemake -n
+snakemake -n -j {number of CPU cores allocated to this workflow}
+## --quite:
+snakemake -n -j {number of CPU cores allocated to this workflow} --quiet
 
 # To view what is going on:
 ## -r: print the reason for each executed rule
@@ -87,8 +90,22 @@ snakemake -r
 ## -p: print out the shell commands that will be executed
 snakemake -p
 ## --dag: do not execute anything and print the directed acyclic graph of jobs in the dot language
-snakemake --dag
+snakemake --dag | dot -Tpdf > dag.pdf
+## --rulegraph:
+snakemake --rulegraph | dot -Tpdf > ruleGraph.pdf
+
+# To execute workflows in Snakefile in the current working directory
+snakemake -j {number of CPU cores allocated to this workflow}
 ```
+
+In the directed acyclic graph (DAG) below, dashed line indicates completed rule, whereas solid line indicates uncompleted rule.
+
+```{r dag, echo=FALSE, eval=TRUE, out.width = "650px", fig.align="center"}
+knitr::include_graphics("C:/Users/lingzili/Documents/seq_tutorials/snakemake/graph/dag.png")
+```
+
+By default, Snakemake executes the first rule of the Snakefile.
+
 # Installation
 
 Below is the recommendated way to install Snakemake by Miniconda Python3 distribution. For other installation methods, please see: https://snakemake.readthedocs.io/en/stable/getting_started/installation.html
@@ -105,9 +122,14 @@ conda install -c bioconda -c conda-forge snakemake
 
 Rules claiming more threads will be scaled down. When Snakemake doesn’t have enough cores to run a rule (as defined by {threads}), Snakemake will run that rule with the maximum available number of cores as defined by snakemake -j.
 
+# Integration with conda
+
+
 # References
 
 Snakemake <https://snakemake.readthedocs.io/en/stable/index.html>
+
+The Snakemake Wrappers repository <https://snakemake-wrappers.readthedocs.io/en/stable/index.html>
 
 Snakemake—a scalable bioinformatics workflow engine <https://academic.oup.com/bioinformatics/article/28/19/2520/290322>
 
