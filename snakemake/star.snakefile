@@ -1,7 +1,7 @@
 # Pipeline for trimming, STAR alignment, and finally fastqc for fastq and BAM files
+# Command for dry run: snakemake --snakefile star.snakefile -n -p -j 20
+# Command to execute: snakemake --snakefile star.snakefile -j 20
 # Remember -j will replace the specific threads defined in the rules!
-# Commands that worked: snakemake -n -p -j 30 fastqcOutput/multiqc.html
-# snakemake -j 30 fastqcOutput/multiqc.html && rm -r ./.snakemake/
 
 os.system("mkdir -p trimOutput")
 os.system("mkdir -p starOutput")
@@ -11,7 +11,8 @@ sample = ["SRR6664591", "SRR6664592", "SRR6664615", "SRR6664616"]
 
 rule all:
     input:
-	    "fastqcOutput/multiqc.html"
+	    "fastqcOutput/multiqc.html",
+	    expand("starOutput/{sample}_Aligned.sortedByCoord.out.bam.bai", sample = sample)
 	    
 ################################################################
 ## Read trimming
@@ -52,6 +53,16 @@ rule align_STAR:
 		--readFilesCommand zcat \
 		--outFileNamePrefix ./starOutput/{params.outprefix} \
 		--outSAMtype BAM SortedByCoordinate"
+
+rule index_bam:
+	input:
+		"starOutput/{sample}_Aligned.sortedByCoord.out.bam"
+	output:
+		"starOutput/{sample}_Aligned.sortedByCoord.out.bam.bai"
+	message: "Indexing BAM files of {sample}"
+	threads: 10
+	shell:
+		"samtools index -@ {threads} {input} {output}"
 
 ################################################################
 ## FastQC and MultiQC
