@@ -1,0 +1,48 @@
+---
+title: 'Coding club meet-up: Using ggplot2 for NGS analysis visualization'
+author: "Lingzi Li"
+date: "In preparation"
+output: html_document
+---
+<style type="text/css">
+
+body{ /* Normal  */
+      font-size: 16px;
+  }
+td {  /* Table  */
+  font-size: 12px;
+}
+h1.title {
+  font-size: 28px;
+}
+h1 { /* Header 1 */
+  font-size: 24px;
+  color: DarkBlue;
+}
+h2 { /* Header 2 */
+    font-size: 20px;
+}
+h3 { /* Header 3 */
+    font-size: 18px;
+}
+code.r{ /* Code block */
+    font-size: 12px;
+}
+pre { /* Code block - determines code spacing between lines */
+    font-size: 14px;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, python.reticulate = FALSE)
+```
+
+# The Anatomy of a Plot
+
+# References
+
+ggplot2: Elegant Graphics for Data Analysis by Hadley Wickham <https://ggplot2-book.org/>
+
+ggplot2 - Essentials <http://www.sthda.com/english/wiki/ggplot2-essentials>
+
+

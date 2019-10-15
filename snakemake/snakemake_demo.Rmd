@@ -1,8 +1,11 @@
 ---
-title: 'Coding club meet-up: Practical steps of implementing snakemake into ATAC-seq analysis'
+title: 'Coding club meet-up: Practical steps of implementing snakemake into ATAC-seq
+  analysis'
 author: "Lingzi Li"
 date: "October 14 2019"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 <style type="text/css">
 
@@ -41,7 +44,7 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, python.reti
 
 Below is the recommendated way to install Snakemake by Miniconda Python3 distribution. For other installation methods, please see: https://snakemake.readthedocs.io/en/stable/getting_started/installation.html
 
-```{bash, eval=FALSE}
+```{bash install, eval=FALSE}
 # Check and make sure you have Python 3
 python --version
 
@@ -146,6 +149,7 @@ rule mark_duplicates:
 
 5) Removal of duplicates, bad quality reads and mitochondrial reads with **SAM flag**
 <https://broadinstitute.github.io/picard/explain-flags.html>
+
 <http://www.htslib.org/doc/samtools.html>
 
 ```{python filter_reads, eval=FALSE}
