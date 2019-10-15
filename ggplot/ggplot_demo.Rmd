@@ -39,10 +39,20 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, python.reti
 
 # The Anatomy of a Plot
 
+# Basic plot types (geoms)
+
+## Bar chart
+
+## Pie chart
+
+## Violin plot
+
+## PCA plot
+
+## Heatmap
+
 # References
 
 ggplot2: Elegant Graphics for Data Analysis by Hadley Wickham <https://ggplot2-book.org/>
 
 ggplot2 - Essentials <http://www.sthda.com/english/wiki/ggplot2-essentials>
-
-
