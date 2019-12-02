@@ -1,7 +1,7 @@
 ---
-title: 'Coding club meet-up: Using ggplot2 for NGS analysis visualization'
+title: 'Coding club meet-up: Using ggplot2 for visualization'
 author: "Lingzi Li"
-date: "In preparation"
+date: "December 3 2019"
 output: html_document
 ---
 <style type="text/css">
@@ -37,19 +37,413 @@ pre { /* Code block - determines code spacing between lines */
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, python.reticulate = FALSE)
 ```
 
-# The Anatomy of a Plot
+# The Anatomy of a plot
 
-# Basic plot types (geoms)
+## Load data
+
+```{r Load packages, echo=TRUE}
+# Load packages
+library(tidyverse)
+library(readxl)
+```
+
+```{r Load data, include=FALSE}
+# Load data
+Mass_data <- read_excel("~/biology_graph/data/Gcg_DEXA.xlsx")
+
+# Gather columns into key-value pairs
+Mass_data_long <- Mass_data %>%
+  select(-c(Total_gram)) %>%
+  gather(Composition, Gram, 6:7)
+
+# Remove "_gram" from data labels
+Mass_data_long$Composition <- gsub("_gram", "", Mass_data_long$Composition)
+
+# Rank the diet
+Mass_data_long$Diet <- factor(Mass_data_long$Diet, levels = c("Chow", "HFD"))
+
+# Subset fat mass of male
+fatMass_Male <- Mass_data_long %>%
+  filter(Sex == "Male", Composition == "Fat")
+```
+
+```{r Show table, echo=TRUE}
+head(fatMass_Male)
+```
+
+## 1) Plot background
+
+```{r Plot background, echo=TRUE, fig.height=3, fig.width=6}
+# Plot fat mass of male
+p1 <- fatMass_Male %>%
+  ggplot(aes(x = Diet, y = Gram, fill = Diet))
+
+p1
+```
+
+## 2) First layer
+
+```{r First layer, echo=TRUE, fig.height=3, fig.width=6}
+p2 <- p1 + geom_boxplot()
+
+p2
+```
+
+## 3) Another layer
+
+```{r Another layer, echo=TRUE, fig.height=3, fig.width=6}
+p3 <- p2 + geom_jitter(width = .1, size = 3)
+
+p3
+```
+
+## 4) Lay out panels in a grid
+
+```{r Lay out panels, echo=TRUE, fig.height=3, fig.width=6}
+p4 <- p3 + facet_grid(cols = vars(Diet_duration))
+
+p4
+```
+
+# 5) Complete with a customized look
+
+```{r Plot theme, echo=TRUE, fig.height=4, fig.width=6}
+My_theme <- theme(
+  axis.line = element_line(colour = "black"),
+  axis.text.x = element_text(color = "black", size = 14, face = "bold"),
+  axis.text.y = element_text(color = "black", size = 14, face = "bold"),
+  axis.title.x = element_text(color = "black", size = 14, face = "bold"),
+  axis.title.y = element_text(color = "black", size = 14, face = "bold"),
+  strip.text.x = element_text(color = "black", size = 14, face = "bold"), # Horizontal facet labels
+  strip.background = element_rect(fill = "white"), # Background of facet labels
+  panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+  panel.background = element_blank(),
+  panel.border = element_rect(colour = "black", fill = NA, size = 2),
+  plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm"),
+  plot.title = element_text(color = "black", size = 16, face = "bold")
+)
+
+p5 <- p4 + My_theme
+
+p5
+```
+
+# Geometric objects (geoms)
+
+## Dot plot with fitted line
+
+### Dataset: Standard curve of insulin ELISA, performed on different dates
+
+```{r ELISA data, echo=FALSE}
+Ins_Cal <- read.csv("~/assay_calculation/data/Cal_Ins.csv")
+
+Ins_Cal_v2 <- Ins_Cal %>%
+  gather(Date, Intensity, 3:10)
+
+# Remove "X" from data labels
+Ins_Cal_v2$Date <- gsub("X", "", Ins_Cal_v2$Date)
+
+head(Ins_Cal_v2, n = 10L)
+```
+
+### 1) Plot background of standard curve
+
+```{r Dot plot p1, echo=TRUE, fig.height=3, fig.width=6}
+Ins_p1 <- Ins_Cal_v2 %>%
+  ggplot(aes(x = Insulin, y = Intensity))
+
+Ins_p1
+```
+
+### 2) Add individual data points
+
+```{r Dot plot p2, echo=TRUE, fig.height=3, fig.width=6}
+Ins_p2 <- Ins_p1 + geom_point(size = 3)
+
+Ins_p2
+```
+
+### 3.1) Add smoothed conditional means with standard error
+
+```{r Dot plot p3, echo=TRUE, fig.height=3, fig.width=6}
+Ins_p3 <- Ins_p2 + geom_smooth(span = 0.8, method = "loess", formula = y ~ x)
+
+Ins_p3
+```
+
+### 3.2) Add a line of best fit
+
+```{r Dot plot p4, echo=TRUE, fig.height=3, fig.width=6}
+Ins_p4 <- Ins_p2 + geom_smooth(method = "lm", se = FALSE)
+
+Ins_p4
+```
+
+```{r Dot plot lm, echo=TRUE, fig.height=3, fig.width=6}
+# Linear regression
+# Intensity = Intercept + (ß * Insulin)
+linearMod <- lm(Intensity ~ Insulin, data = Ins_Cal_v2)
+summary(linearMod)
+```
 
 ## Bar chart
 
-## Pie chart
+### Dataset (same as above): Standard curve of insulin ELISA, performed on different dates
+
+### 1) Plot background of bar chart
+
+```{r bar chart p1, echo=TRUE, fig.height=3, fig.width=6}
+Ins_Bar_p1 <- Ins_Cal_v2 %>%
+  ggplot(aes(x = Calibrator, y = Intensity, fill = Date))
+
+Ins_Bar_p1
+```
+
+### 2) Add bars in groups
+
+```{r bar chart p2, echo=TRUE, fig.height=3, fig.width=6}
+Ins_Bar_p2 <- Ins_Bar_p1 + geom_bar(stat = "identity", position = position_dodge())
+
+Ins_Bar_p2
+```
+
+### 3) Add bars with means with standard error
+
+```{r Ins mean and se, echo=TRUE}
+# Calculate mean and se
+Ins_Stat <- Ins_Cal_v2 %>%
+  group_by(Insulin, Calibrator) %>%
+  summarise(
+    average = mean(Intensity, na.rm = TRUE),
+    se = sd(Intensity, na.rm = TRUE) / sqrt(length(Intensity))
+  )
+
+Ins_Stat
+```
+
+```{r bar chart p3, echo=TRUE, fig.height=3, fig.width=6}
+# First plot the mean
+Ins_Bar_p3 <- Ins_Stat %>%
+  ggplot(aes(x = Calibrator, y = average, fill = Calibrator)) +
+  geom_bar(stat = "identity")
+
+Ins_Bar_p3
+```
+
+```{r bar chart p4, echo=TRUE, fig.height=3, fig.width=6}
+# Then add error bars
+Ins_Bar_p4 <- Ins_Bar_p3 +
+  geom_errorbar(aes(ymin = average - se, ymax = average + se), width = .2) +
+  labs(title = "Plot of insulin calibrator", x = NULL, y = "Intensity A450")
+
+Ins_Bar_p4
+```
 
 ## Violin plot
 
+### Dataset (same as above): Standard curve of insulin ELISA, performed on different dates
+
+### Basic violin plot
+
+```{r violin p1, echo=TRUE, fig.height=3, fig.width=6}
+Ins_Violin_p1 <- Ins_Cal_v2 %>%
+  ggplot(aes(x = Calibrator, y = Intensity, color = Calibrator)) +
+  geom_violin()
+
+Ins_Violin_p1
+```
+
+```{r violin p1 rotate, echo=TRUE, fig.height=3, fig.width=6}
+# Rotate the violin plot
+Ins_Violin_p1 + coord_flip()
+```
+
+### Add mean with standard deviation
+
+```{r r violin p2, echo=TRUE, fig.height=4, fig.width=6}
+Ins_Violin_p1 + stat_summary(fun.data = mean_sdl, geom = "pointrange", color = "black")
+```
+
+## Venn diagram
+
+### Dataset for venn diagram
+```{r df venn, echo=FALSE}
+# Set the seed of random number generator
+set.seed((100))
+
+# Random generation for the binomial distribution with parameters size (0 or 1) and prob.
+df_venn <- data.frame(
+  A = rbinom(100, 1, 0.8),
+  B = rbinom(100, 1, 0.7),
+  C = rbinom(100, 1, 0.6)
+) %>% mutate_all(., as.logical)
+
+# Add "Gene_" to row names
+rownames(df_venn) <- paste0("Gene_", rownames(df_venn))
+
+head(df_venn)
+```
+
+Use vennCounts from the package limma to compute classification counts
+
+```{r vennCounts, echo=TRUE}
+# Load packages
+library(ggforce)
+library(limma)
+
+# Compute classification counts
+counts_venn <- vennCounts(df_venn)
+class(counts_venn) <- "matrix"
+
+# Add x and y coordinates for the count annotations
+counts_venn <- as.data.frame(counts_venn)[-1, ] %>%
+  mutate(
+    x = c(0, 1.2, 0.8, -1.2, -0.8, 0, 0),
+    y = c(1.2, -0.6, 0.5, -0.6, 0.5, -1, 0)
+  )
+
+counts_venn
+```
+
+### Define basic structure for the circles
+
+```{r Define coordinates, echo=TRUE, fig.height=4, fig.width=6}
+# Define x and y coordinates for the circles
+venn_structure <- data.frame(
+  x = c(0, 0.866, -0.866),
+  y = c(1, -0.5, -0.5),
+  Sample = c("A", "B", "C")
+)
+
+venn_p1 <- venn_structure %>% ggplot(aes(x0 = x, y0 = y, r = 1.5, fill = Sample)) +
+  geom_circle(alpha = .5, size = 1, colour = "grey") +
+  coord_fixed()
+
+venn_p1
+```
+
+### Venn diagram with annotation of the counts
+
+```{r Venn p2, echo=TRUE, fig.height=4, fig.width=6}
+venn_p2 <- venn_p1 +
+  annotate("text", x = counts_venn$x, y = counts_venn$y, label = counts_venn$Counts, size = 5)
+
+venn_p2
+```
+
+Finally to remove the grey background
+
+```{r venn blank background, echo=TRUE, fig.height=4, fig.width=6}
+venn_p2 + theme_void()
+```
+
 ## PCA plot
 
+### Dataset from RNA-seq tpm counts
+
+```{r Calculate pca, echo=TRUE}
+# Load kallisto counts
+kallisto_count <- read.csv("~/mRNA_IP/count/kallisto_count_19112019.csv")
+
+kallisto_df <- kallisto_count[c(1, 5, 6, 7)] %>%
+  spread(target_id, tpm, fill = NA, convert = FALSE, drop = TRUE, sep = NULL)
+
+kallisto_df[1:9, 1:6]
+
+# Calculate principal component analysis based on tpm
+pca <- prcomp(kallisto_df[, -c(1, 2)])
+
+pca$x
+```
+
+### PCA plot
+
+Option 1: By using ggplot2
+
+```{r pca df, echo=TRUE}
+# Create data frame for PC
+df_pca <- as.data.frame(pca$x)
+
+df_pca$condition <- kallisto_df$condition
+
+head(df_pca)
+```
+
+```{r pca ggplot2, echo=TRUE, fig.height=3, fig.width=5}
+# Plot PCA with ggplot2
+pca_p1 <- ggplot(df_pca, aes(x = PC1, y = PC2, color = condition))
+
+pca_p1 + geom_point(size = 3) + theme_bw()
+```
+
+Option 2: By using package ggfortify
+
+```{r ggfortify, echo=TRUE, fig.height=3, fig.width=5}
+library(ggfortify)
+pca_v2_p1 <- autoplot(pca, data = kallisto_df, colour = "condition", size = 3) +
+  theme_bw()
+
+pca_v2_p1
+```
+
 ## Heatmap
+
+### Dataset from RNA-seq tpm counts
+
+```{r Prepare data, echo=TRUE}
+df_tpm <- kallisto_count %>%
+  filter(tpm > 0) %>%
+  select(c(1, 5, 6))
+
+head(df_tpm)
+```
+
+### Subset a list of interested genes
+
+```{r Subset genelist, echo=TRUE}
+# Ins1: ENSMUST00000039652.5
+# Mafa: ENSMUST00000062002.5
+# Pdx1: ENSMUST00000085591.6
+# Gcg: ENSMUST00000102733.9
+# Sst: ENSMUST00000004480.4
+# Amy1: ENSMUST00000106540.7
+# Pnlip: ENSMUST00000057270.8
+
+geneList <- c("ENSMUST00000039652.5", "ENSMUST00000062002.5", "ENSMUST00000085591.6", "ENSMUST00000102733.9", "ENSMUST00000004480.4", "ENSMUST00000106540.7", "ENSMUST00000057270.8")
+
+# Subset interested genes
+df_subset <- subset(df_tpm, df_tpm$target_id %in% geneList)
+
+# Calculate z scores
+df_subset$z <- runif(df_subset$tpm, min = -10, max = 10)
+
+head(df_subset)
+```
+
+```{r heatmap, echo=TRUE, fig.height=5, fig.width=6}
+# Set the theme for heatmap
+theme_heatmap <- theme(
+  axis.line = element_line(colour = "black"),
+  axis.text.x = element_text(color = "black", size = 12, face = "bold", angle = 45, hjust = 1),
+  axis.text.y = element_text(color = "black", size = 16, face = "bold"),
+  axis.title.x = element_blank(),
+  axis.title.y = element_blank(),
+  legend.title = element_blank(),
+  legend.text = element_text(color = "black", size = 16, face = "bold"),
+  legend.key = element_rect(fill = "white"), # Remove grey background of the legend
+  panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+  panel.background = element_blank(),
+  panel.border = element_rect(colour = "black", fill = NA, size = 2),
+  plot.margin = unit(c(0.5, 0.5, 0.5, 0.5), "cm")
+)
+
+# heatmap by geom_tile
+df_subset %>% ggplot(aes(x = sample, y = target_id)) +
+  geom_tile(aes(fill = z)) +
+  scale_fill_gradient(low = "white", high = "red") +
+  theme_heatmap +
+  scale_y_discrete(labels = c("ENSMUST00000039652.5" = "Ins1", "ENSMUST00000062002.5" = "Mafa", "ENSMUST00000085591.6" = "Pdx1", "ENSMUST00000102733.9" = "Gcg", "ENSMUST00000004480.4" = "Sst", "ENSMUST00000106540.7" = "Amy1", "ENSMUST00000057270.8" = "Pnlip"))
+```
 
 # References
 
