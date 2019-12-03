@@ -2,7 +2,9 @@
 title: 'Coding club meet-up: Using ggplot2 for visualization'
 author: "Lingzi Li"
 date: "December 3 2019"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 <style type="text/css">
 
@@ -105,7 +107,7 @@ p4 <- p3 + facet_grid(cols = vars(Diet_duration))
 p4
 ```
 
-# 5) Complete with a customized look
+## 5) Complete with a customized look
 
 ```{r Plot theme, echo=TRUE, fig.height=4, fig.width=6}
 My_theme <- theme(
@@ -243,7 +245,7 @@ Ins_Bar_p4
 
 ### Dataset (same as above): Standard curve of insulin ELISA, performed on different dates
 
-### Basic violin plot
+### 1) Basic violin plot
 
 ```{r violin p1, echo=TRUE, fig.height=3, fig.width=6}
 Ins_Violin_p1 <- Ins_Cal_v2 %>%
@@ -258,7 +260,7 @@ Ins_Violin_p1
 Ins_Violin_p1 + coord_flip()
 ```
 
-### Add mean with standard deviation
+### 2) Add mean with standard deviation
 
 ```{r r violin p2, echo=TRUE, fig.height=4, fig.width=6}
 Ins_Violin_p1 + stat_summary(fun.data = mean_sdl, geom = "pointrange", color = "black")
@@ -284,7 +286,7 @@ rownames(df_venn) <- paste0("Gene_", rownames(df_venn))
 head(df_venn)
 ```
 
-Use vennCounts from the package limma to compute classification counts
+### 1) Use vennCounts from the package limma to compute classification counts
 
 ```{r vennCounts, echo=TRUE}
 # Load packages
@@ -305,7 +307,7 @@ counts_venn <- as.data.frame(counts_venn)[-1, ] %>%
 counts_venn
 ```
 
-### Define basic structure for the circles
+### 2) Define basic structure for the circles
 
 ```{r Define coordinates, echo=TRUE, fig.height=4, fig.width=6}
 # Define x and y coordinates for the circles
@@ -322,7 +324,7 @@ venn_p1 <- venn_structure %>% ggplot(aes(x0 = x, y0 = y, r = 1.5, fill = Sample)
 venn_p1
 ```
 
-### Venn diagram with annotation of the counts
+### 3) Venn diagram with annotation of the counts
 
 ```{r Venn p2, echo=TRUE, fig.height=4, fig.width=6}
 venn_p2 <- venn_p1 +
@@ -331,7 +333,7 @@ venn_p2 <- venn_p1 +
 venn_p2
 ```
 
-Finally to remove the grey background
+### 4) Finally to remove the grey background
 
 ```{r venn blank background, echo=TRUE, fig.height=4, fig.width=6}
 venn_p2 + theme_void()
