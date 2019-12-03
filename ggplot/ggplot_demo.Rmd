@@ -3,8 +3,8 @@ title: 'Coding club meet-up: Using ggplot2 for visualization'
 author: "Lingzi Li"
 date: "December 3 2019"
 output:
-  pdf_document: default
   html_document: default
+  pdf_document: default
 ---
 <style type="text/css">
 
@@ -38,6 +38,18 @@ pre { /* Code block - determines code spacing between lines */
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE, python.reticulate = FALSE)
 ```
+
+# Note of the day
+
+There are several useful packages to check out:
+
+UpSet: Visualizing Intersecting Sets (http://caleydo.org/tools/upset/)
+
+Intervene: Intersection and visualization of multiple genomic region sets (https://intervene.readthedocs.io/en/latest/index.html)
+
+ggplot2 extensions (https://www.ggplot2-exts.org/ggiraph.html)
+
+DEGreport (https://lpantano.github.io/DEGreport/index.html)
 
 # The Anatomy of a plot
 
@@ -343,7 +355,7 @@ venn_p2 + theme_void()
 
 ### Dataset from RNA-seq tpm counts
 
-```{r Calculate pca, echo=TRUE}
+```{r Load tpm data, echo=TRUE}
 # Load kallisto counts
 kallisto_count <- read.csv("~/mRNA_IP/count/kallisto_count_19112019.csv")
 
@@ -351,11 +363,13 @@ kallisto_df <- kallisto_count[c(1, 5, 6, 7)] %>%
   spread(target_id, tpm, fill = NA, convert = FALSE, drop = TRUE, sep = NULL)
 
 kallisto_df[1:9, 1:6]
+```
 
+```{r Calculate pca, echo=TRUE}
 # Calculate principal component analysis based on tpm
 pca <- prcomp(kallisto_df[, -c(1, 2)])
 
-pca$x
+summary(pca)[6]
 ```
 
 ### PCA plot
@@ -375,7 +389,7 @@ head(df_pca)
 # Plot PCA with ggplot2
 pca_p1 <- ggplot(df_pca, aes(x = PC1, y = PC2, color = condition))
 
-pca_p1 + geom_point(size = 3) + theme_bw()
+pca_p1 + geom_point(size = 3) + theme_bw() + labs(x = "PC1 (62.1%)", y = "PC2 (26.3%)")
 ```
 
 Option 2: By using package ggfortify
