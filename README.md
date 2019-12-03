@@ -7,6 +7,7 @@
 | Agust 7 2019 | [Automating the analysis path from sequence reads to count matrix](https://github.com/lingzili/seq_tutorials/tree/master/loop) |
 | September 20 2019 | [sleuth walkthrough](https://github.com/lingzili/seq_tutorials/tree/master/sleuth) |
 | October 14 2019 | [Snakemake walkthrough](https://github.com/lingzili/seq_tutorials/tree/master/snakemake) |
+| December 3 2019 | [ggplot2 demo](https://github.com/lingzili/seq_tutorials/tree/master/ggplot) |
 
 Extra:
 
